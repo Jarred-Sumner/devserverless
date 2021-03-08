@@ -139,6 +139,9 @@ self.addEventListener("fetch", (e: FetchEvent) => {
           status: 200,
           headers,
         });
+      } else if (e.request.url.includes(location.origin + "/local/")) {
+        const rsp = await caches.match(e.request.url);
+        if (rsp) return rsp;
       }
 
       const response = await fetch(e.request);

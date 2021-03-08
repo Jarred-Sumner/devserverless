@@ -80,50 +80,62 @@ function renderLineWithNumber(
     ${renderLine(line)}
   `;
 }
-async function renderESBuildError(error: Message, build?: ESBuildPackage) {
+async function renderESBuildError(
+  error: Message,
+  build?: ESBuildPackage,
+  index: number
+) {
   let body = `
   <div class="__DevServer__Error">
-  <div class="__DevServer__Error-text">${error.text}</div>
+  <div class="__DevServer__Error-text ${
+    !error.location ? "__DevServer__Error-text--no-location" : ""
+  }">${error.text}<span class="__DevServer__Error-text-number">${
+    index + 1
+  }</span></div>
 `;
 
   let lines: string[];
 
-  if (build) {
-    try {
-      let file = await build.getFileForLocation(error.location);
-      lines = (await file.text()).split("\n");
-    } catch (exception) {
-      console.error(exception);
+  if (error.location) {
+    if (build) {
+      try {
+        let file = await build.getFileForLocation(error.location);
+        lines = (await file.text()).split("\n");
+      } catch (exception) {
+        console.error(exception);
+      }
     }
-  }
 
-  body += renderLocation(error.location, build?.id + "/");
-  const WIGGLE_ROOM = 6;
-  const maxLine = Math.min(error.location.line + WIGGLE_ROOM, lines.length - 1);
-  body += `<div class="__DevServer__Error-sourceCode">`;
-  if (lines) {
-    for (
-      let i = error.location.line - WIGGLE_ROOM;
-      i > 0 && i < error.location.line - 1;
-      i++
-    ) {
-      body += renderLineWithNumber(lines[i], i + 1, maxLine);
+    body += renderLocation(error.location, build?.id + "/");
+    let WIGGLE_ROOM = 6;
+    const maxLine = Math.min(
+      error.location.line + WIGGLE_ROOM,
+      lines.length - 1
+    );
+    body += `<div class="__DevServer__Error-sourceCode">`;
+    if (lines) {
+      for (
+        let i = Math.max(error.location.line - WIGGLE_ROOM, 0);
+        i > -1 && i < error.location.line - 1;
+        i++
+      ) {
+        body += renderLineWithNumber(lines[i], i + 1, maxLine);
+      }
     }
-  }
 
-  body += renderHighlightLine(error.location, maxLine);
+    body += renderHighlightLine(error.location, maxLine);
 
-  if (lines) {
-    for (
-      let i = error.location.line + 1;
-      i < lines.length && i < error.location.line + WIGGLE_ROOM;
-      i++
-    ) {
-      body += renderLineWithNumber(lines[i], i, maxLine);
+    if (lines) {
+      for (
+        let i = error.location.line + 1;
+        i < lines.length && i < error.location.line + WIGGLE_ROOM;
+        i++
+      ) {
+        body += renderLineWithNumber(lines[i], i, maxLine);
+      }
     }
+    body += `</div>`;
   }
-
-  body += `</div>`;
 
   if (error.notes?.length) {
     body += error.notes.map(renderESBuildNote).join("\n");
@@ -140,15 +152,34 @@ export async function buildError(error: PackagerError) {
       return `
       <div class="__DevServer__ErrorPage">
         <div class="__DevServer__ErrorPage-modal">
-          <div class="__DevServer__ErrorPage-title">
-            Allow DevServer to read ${_error.directoryName}?
+          <div class="__DevServer__ErrorPage-heading">
+            PERMISSIONS REQUEST
           </div>
-          <div class="__DevServer__ErrorPage-description">
-            DevServer uses the local filesystem API to bundle in-browser. For security reasons, browsers disable access when all tabs to an origin are closed.
+          <div class="__DevServer__ErrorPage-title __DevServer__ErrorPage-title--no-y">
+            Allow DevServer to read <span class="__DevServer_Mono">${
+              _error.directoryName
+            }</span>?
+          </div>
+          <div class="__DevServer__ErrorPage-subtitle">
+            DevServer uses the filesystem API to compile, bundle, serve assets.
           </div>
           <div class="__DevServer__ErrorPage-button" id="button">Allow access</div>
-        </div>
-      </div>
+
+
+          <div class="__DevServer__ErrorPage-footer">
+            <div>
+              ${new Intl.DateTimeFormat(["lookup"], {
+                dateStyle: "short",
+                timeStyle: "long",
+              }).format(new Date())}
+            </div>
+
+            <div>
+            ${_error.directoryName}
+            </div>
+          </div>
+    </div>
+  </div>
     <script module type="application/javascript">
       globalThis.HANDLE_ID = "${_error.directoryName}";
       ${REQUEST_PERMISSION_ERROR}
@@ -159,11 +190,10 @@ export async function buildError(error: PackagerError) {
     case ErrorCode.buildFailed: {
       let _error = error as PackagerError & BuildFailure;
       let renderCount = _error.errors.length;
-      renderCount = renderCount > 5 ? 5 : renderCount;
 
       let errorText = "";
       for (let i = 0; i < renderCount; i++) {
-        errorText += await renderESBuildError(_error.errors[i], error.build);
+        errorText += await renderESBuildError(_error.errors[i], error.build, i);
       }
 
       return `<div class="__DevServer__ErrorPage">
@@ -194,7 +224,7 @@ export async function buildError(error: PackagerError) {
       return `<div class="__DevServer__ErrorPage">
         <div class="__DevServer__ErrorPage-modal">
         <div class="__DevServer__ErrorPage-heading">
-          ${MESSAGE[error.code]}
+          ${MESSAGE[error.code] || ErrorCode[error.code]}
         </div>
         <div class="__DevServer__ErrorPage-title">${error.name}</div>
 
@@ -209,4 +239,12 @@ export async function renderPackagerError(error) {
   return `<!DOCTYPE html><html><head><script>${IDLE_WORKER_CODE}</script><style>${CSS_FILE}</style></head><body>${await buildError(
     error
   )}</body></html>`;
+}
+
+export async function injectRenderPackagerError(error) {
+  return [
+    `<script module>${IDLE_WORKER_CODE}</script`,
+    `<style>${CSS_FILE}</style>`,
+    await buildError(error),
+  ];
 }

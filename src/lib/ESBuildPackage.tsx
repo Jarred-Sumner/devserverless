@@ -124,7 +124,7 @@ export class ESBuildPackage {
 
           const rel = path.relative(this.staticRoot, abs);
           if (rel && !rel.startsWith("..") && !path.isAbsolute(rel)) {
-            if (Mime.getType(abs).includes("html")) {
+            if (Mime.getType(abs)?.includes("html")) {
               this.staticContent.set(rel, entry);
             }
           } else {
@@ -365,7 +365,7 @@ export class ESBuildPackage {
       if (type === "text/html" || type === "application/html") {
         let newDest = dest.replace(".html", "");
 
-        const html = generateHTML(this.package.id, data);
+        const html = generateHTML(this.id, data);
         pages.set(fileName, html as string);
 
         const blob1 = new Blob([html], {
@@ -444,7 +444,11 @@ export class ESBuildPackage {
       filename = "/" + filename;
     }
     const handle = this.dirMap.get(filename) as FileSystemFileHandle;
-    return await handle.getFile();
+    if (handle) {
+      return await handle.getFile();
+    } else {
+      return null;
+    }
   }
 
   static async load(

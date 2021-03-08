@@ -74,6 +74,7 @@ form {
 html {
   background-color: rgb(61, 59, 87);
   color: white;
+  overflow-x: hidden;
 }
 :root {
   --x-padding: 24px;
@@ -90,15 +91,17 @@ html {
 }
 
 .__DevServer__ErrorPage-modal {
-  margin-top: 10vh;
+  margin-top: 32px;
   background: rgb(32, 32, 44);
   border-radius: 4px;
   filter: drop-shadow(1px 1px 3px rgb(48, 48, 68));
   color: white;
   color: white;
-  min-width: 800px;
-  width: auto;
+  min-width: auto;
+  max-width: 800px;
+  width: 100%;
   grid-auto-flow: row;
+  margin-bottom: 32px;
 }
 
 .__DevServer__ErrorPage-footer,
@@ -116,6 +119,7 @@ html {
   grid-auto-flow: row;
 }
 
+.__DevServer__ErrorPage-subtitle,
 .__DevServer__ErrorPage-footer,
 .__DevServer__Error-text,
 .__DevServer__ErrorPage-heading,
@@ -145,11 +149,31 @@ html {
   color: rgb(238, 1, 96);
   font-weight: bold;
   font-size: 2rem;
-  padding-bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-bottom: var(--y-padding-half);
+  padding-top: var(--y-padding-half);
+}
+
+.__DevServer__Error .__DevServer__Error-text {
+  border-top: 1px solid rgba(200, 200, 200, 0.2);
+}
+
+.__DevServer__Error-text--no-location {
+  font-size: 1.4rem;
 }
 
 .__DevServer__Error-line {
   padding-right: var(--x-padding);
+}
+
+.__DevServer__Error-text-number {
+  font-family: var(--monospace);
+  color: rgb(168, 174, 189);
+  margin-right: 4px;
+  font-variant: small-caps;
+  font-size: 1.4rem;
+  margin-left: auto;
 }
 
 .__DevServer__Error-lineNumber,
@@ -157,9 +181,13 @@ html {
   font-family: var(--monospace);
   background-color: rgb(21, 21, 21);
   color: rgb(168, 174, 189);
-  white-space: pre-line;
+  white-space: pre;
   font-size: 1rem;
   height: 1.2rem;
+}
+
+.__DevServer__Error-lineNumber {
+  font-variant: small-caps;
 }
 
 .__DevServer__Error-location {
@@ -209,4 +237,40 @@ html {
 .__DevServer__Error-lineNumber {
   padding-right: 16px;
   padding-left: 32px;
+}
+
+.__DevServer_Mono {
+  font-family: var(--monospace) !important;
+}
+
+.__DevServer__ErrorPage-title--no-y {
+  padding-bottom: 0;
+}
+.__DevServer__ErrorPage-subtitle {
+  padding-top: var(--y-padding-half);
+}
+
+.__DevServer__ErrorPage-button {
+  margin: var(--y-padding) var(--x-padding);
+  padding: 12px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: min-content;
+  white-space: nowrap;
+  background-color: rgb(105, 116, 218);
+  font-weight: 500;
+  font-size: 1.4rem;
+  transform: scale(1);
+  transition: transform 0.1s linear;
+  transition-property: background-color, transform;
+}
+
+.__DevServer__ErrorPage-button:hover {
+  background-color: rgb(92, 103, 194);
+  transform: scale(1.02);
+}
+
+.__DevServer__ErrorPage-button:active {
+  background-color: rgb(87, 98, 190);
+  transform: scale(1.01);
 }

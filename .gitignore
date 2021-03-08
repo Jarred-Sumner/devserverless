@@ -1,6 +1,6 @@
 dist
 /dist
-/**/*.jsfile
-/**/*.jsurl
+dist/**/*.jsfile
+dist/**/*.jsurl
 **/*.DS_Store
 node_modules

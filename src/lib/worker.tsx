@@ -3,6 +3,7 @@ import wasmURL from "esbuild-wasm/esbuild.wasm";
 import { BundleByIDParams, BundleParams, Method } from "./rpc";
 import { ESBuildPackage } from "./ESBuildPackage";
 import { Database } from "src/lib/Database";
+import path from "path";
 
 let service: ESBuild.Service;
 let database: Database;

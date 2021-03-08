@@ -1,7 +1,7 @@
 {
   "inputs": {
     "dist/ServiceWorker.jsurl": {
-      "bytes": 1132641,
+      "bytes": 1136706,
       "imports": []
     },
     "src/service-worker.ts": {
@@ -1113,7 +1113,7 @@
       ]
     },
     "src/htmlGenerator.ts": {
-      "bytes": 1586,
+      "bytes": 1471,
       "imports": [
         {
           "path": "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/index.js",
@@ -1138,7 +1138,7 @@
       "imports": []
     },
     "src/lib/ESBuildPackage.tsx": {
-      "bytes": 16744,
+      "bytes": 16795,
       "imports": [
         {
           "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js",
@@ -1193,7 +1193,7 @@
       ]
     },
     "dist/lib/worker.jsurl": {
-      "bytes": 974844,
+      "bytes": 974622,
       "imports": []
     },
     "src/pages/[code].tsx": {
@@ -1223,15 +1223,15 @@
     }
   },
   "outputs": {
-    "dist/ServiceWorker.7732L7MS.jsurl": {
+    "dist/ServiceWorker.GYNXFH3L.jsurl": {
       "imports": [],
       "exports": [],
       "inputs": {
         "dist/ServiceWorker.jsurl": {
-          "bytesInOutput": 1132641
+          "bytesInOutput": 1136706
         }
       },
-      "bytes": 1132641
+      "bytes": 1136706
     },
     "dist/service-worker.js.map": {
       "imports": [],
@@ -1263,21 +1263,21 @@
       },
       "bytes": 560
     },
-    "dist/worker.RCJG5JGS.jsurl": {
+    "dist/worker.VVLJHDIR.jsurl": {
       "imports": [],
       "exports": [],
       "inputs": {
         "dist/lib/worker.jsurl": {
-          "bytesInOutput": 974844
+          "bytesInOutput": 974622
         }
       },
-      "bytes": 974844
+      "bytes": 974622
     },
     "dist/pages/[code].js.map": {
       "imports": [],
       "exports": [],
       "inputs": {},
-      "bytes": 398481
+      "bytes": 398371
     },
     "dist/pages/[code].js": {
       "imports": [],
@@ -1528,10 +1528,10 @@
           "bytesInOutput": 965
         },
         "src/lib/ESBuildPackage.tsx": {
-          "bytesInOutput": 12838
+          "bytesInOutput": 12876
         },
         "src/htmlGenerator.ts": {
-          "bytesInOutput": 1102
+          "bytesInOutput": 954
         },
         "src/lib/ErrorCode.tsx": {
           "bytesInOutput": 978
@@ -1555,7 +1555,7 @@
           "bytesInOutput": 1484
         }
       },
-      "bytes": 769032
+      "bytes": 768778
     },
     "dist/pages/index.js.map": {
       "imports": [],

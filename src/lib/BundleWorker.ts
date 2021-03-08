@@ -3,6 +3,7 @@ import wasmURL from "esbuild-wasm/esbuild.wasm";
 import { BundleByIDParams, BundleParams, Method, OutputParams } from "./rpc";
 import { ESBuildPackage } from "./ESBuildPackage";
 import { Database } from "src/lib/Database";
+import path from "path";
 console.time("START");
 
 let service: ESBuild.Service;
@@ -111,6 +112,9 @@ export class BundleWorker {
         handle: this.pkgs.get(params.id).directory,
         origin: params.origin,
       });
+    }
+
+    if (!database.db) {
     }
 
     const res = await database.getPackageById(params.id);

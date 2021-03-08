@@ -28,22 +28,18 @@ export function generateHTML(packageName: string, source: string) {
   // });
 
   const handler2 = new DomHandler((err, elems) => {
-    DomUtils.prependChild(
-      DomUtils.getElementsByTagName("head", dom, true)[0] ||
-        DomUtils.getElementsByTagName("html", dom, true)[0],
-      elems[0]
-    );
-    DomUtils.prependChild(
-      DomUtils.getElementsByTagName("head", dom, true)[0] ||
-        DomUtils.getElementsByTagName("html", dom, true)[0],
-      elems[1]
-    );
+    for (let elem of elems) {
+      DomUtils.prependChild(
+        DomUtils.getElementsByTagName("head", dom, true)[0] ||
+          DomUtils.getElementsByTagName("html", dom, true)[0],
+        elem
+      );
+    }
   });
 
   var parser2 = new Parser(handler2);
-  parser2.write(
-    `<base href="/local/${packageName}"></base><script>${IDLE_WORKER_CODE}</script>`
-  );
+  parser2.write(`<base href="/local/${packageName}/"></base>`);
+  parser2.write(`<script>${IDLE_WORKER_CODE}</script>`);
   parser2.end();
 
   return serializer.default(dom, {});
