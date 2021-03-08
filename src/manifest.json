@@ -1,0 +1,9 @@
+{
+  "name": "DevServerless",
+  "short_name": "DevServerless",
+  "start_url": ".",
+  "Scope": "/",
+  "display": "standalone",
+  "background_color": "#fff",
+  "description": "In-browser local dev-server"
+}

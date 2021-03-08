@@ -1,0 +1,6 @@
+dist
+/dist
+/**/*.jsfile
+/**/*.jsurl
+**/*.DS_Store
+node_modules
