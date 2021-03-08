@@ -1,14 +1,27 @@
 {
   "inputs": {
-    "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm": {
-      "bytes": 8227523,
+    "dist/ServiceWorker.jsurl": {
+      "bytes": 1132641,
       "imports": []
     },
     "src/service-worker.ts": {
-      "bytes": 2418,
+      "bytes": 95,
       "imports": [
         {
-          "path": "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm",
+          "path": "dist/ServiceWorker.jsurl",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "src/lib/IdleWorker.jsurl": {
+      "bytes": 560,
+      "imports": []
+    },
+    "src/lib/launchIdleWorker.ts": {
+      "bytes": 247,
+      "imports": [
+        {
+          "path": "src/lib/IdleWorker.jsurl",
           "kind": "import-statement"
         }
       ]
@@ -56,7 +69,7 @@
       ]
     },
     "src/lib/Database.ts": {
-      "bytes": 3950,
+      "bytes": 3975,
       "imports": [
         {
           "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js",
@@ -798,22 +811,9 @@
         }
       ]
     },
-    "dist/htmlLoader.jsfile": {
-      "bytes": 9996,
+    "node_modules/.pnpm/domelementtype@2.1.0/node_modules/domelementtype/lib/index.js": {
+      "bytes": 1179,
       "imports": []
-    },
-    "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/decode.json": {
-      "bytes": 299,
-      "imports": []
-    },
-    "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode_codepoint.js": {
-      "bytes": 1159,
-      "imports": [
-        {
-          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/decode.json",
-          "kind": "require-call"
-        }
-      ]
     },
     "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/entities.json": {
       "bytes": 32977,
@@ -827,62 +827,15 @@
       "bytes": 53,
       "imports": []
     },
-    "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Tokenizer.js": {
-      "bytes": 35161,
-      "imports": [
-        {
-          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode_codepoint.js",
-          "kind": "require-call"
-        },
-        {
-          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/entities.json",
-          "kind": "require-call"
-        },
-        {
-          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/legacy.json",
-          "kind": "require-call"
-        },
-        {
-          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/xml.json",
-          "kind": "require-call"
-        }
-      ]
-    },
-    "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Parser.js": {
-      "bytes": 12357,
-      "imports": [
-        {
-          "path": "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Tokenizer.js",
-          "kind": "require-call"
-        }
-      ]
-    },
-    "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js": {
-      "bytes": 11624,
+    "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/decode.json": {
+      "bytes": 299,
       "imports": []
     },
-    "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/index.js": {
-      "bytes": 6217,
+    "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode_codepoint.js": {
+      "bytes": 1159,
       "imports": [
         {
-          "path": "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js",
-          "kind": "require-call"
-        },
-        {
-          "path": "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js",
-          "kind": "require-call"
-        }
-      ]
-    },
-    "node_modules/.pnpm/domelementtype@2.1.0/node_modules/domelementtype/lib/index.js": {
-      "bytes": 1179,
-      "imports": []
-    },
-    "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/tagtypes.js": {
-      "bytes": 1310,
-      "imports": [
-        {
-          "path": "node_modules/.pnpm/domelementtype@2.1.0/node_modules/domelementtype/lib/index.js",
+          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/decode.json",
           "kind": "require-call"
         }
       ]
@@ -959,6 +912,62 @@
         },
         {
           "path": "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/foreignNames.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Tokenizer.js": {
+      "bytes": 35161,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode_codepoint.js",
+          "kind": "require-call"
+        },
+        {
+          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/entities.json",
+          "kind": "require-call"
+        },
+        {
+          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/legacy.json",
+          "kind": "require-call"
+        },
+        {
+          "path": "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/xml.json",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Parser.js": {
+      "bytes": 12357,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Tokenizer.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js": {
+      "bytes": 11624,
+      "imports": []
+    },
+    "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/index.js": {
+      "bytes": 6217,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js",
+          "kind": "require-call"
+        },
+        {
+          "path": "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/tagtypes.js": {
+      "bytes": 1310,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/domelementtype@2.1.0/node_modules/domelementtype/lib/index.js",
           "kind": "require-call"
         }
       ]
@@ -1104,10 +1113,10 @@
       ]
     },
     "src/htmlGenerator.ts": {
-      "bytes": 1386,
+      "bytes": 1586,
       "imports": [
         {
-          "path": "dist/htmlLoader.jsfile",
+          "path": "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/index.js",
           "kind": "import-statement"
         },
         {
@@ -1115,17 +1124,21 @@
           "kind": "import-statement"
         },
         {
-          "path": "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/index.js",
+          "path": "src/lib/IdleWorker.jsurl",
           "kind": "import-statement"
         }
       ]
+    },
+    "src/lib/ErrorCode.tsx": {
+      "bytes": 293,
+      "imports": []
     },
     "src/lib/getCache.tsx": {
       "bytes": 149,
       "imports": []
     },
     "src/lib/ESBuildPackage.tsx": {
-      "bytes": 16685,
+      "bytes": 16744,
       "imports": [
         {
           "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js",
@@ -1144,17 +1157,21 @@
           "kind": "import-statement"
         },
         {
+          "path": "src/lib/ErrorCode.tsx",
+          "kind": "import-statement"
+        },
+        {
           "path": "src/lib/getCache.tsx",
           "kind": "import-statement"
         }
       ]
     },
     "src/lib/rpc.ts": {
-      "bytes": 500,
+      "bytes": 511,
       "imports": []
     },
     "src/lib/Packager.ts": {
-      "bytes": 1151,
+      "bytes": 1137,
       "imports": [
         {
           "path": "src/lib/rpc.ts",
@@ -1175,13 +1192,17 @@
         }
       ]
     },
-    "dist/worker.jsurl": {
-      "bytes": 983507,
+    "dist/lib/worker.jsurl": {
+      "bytes": 974844,
       "imports": []
     },
     "src/pages/[code].tsx": {
-      "bytes": 2089,
+      "bytes": 2128,
       "imports": [
+        {
+          "path": "src/lib/launchIdleWorker.ts",
+          "kind": "import-statement"
+        },
         {
           "path": "src/lib/Database.ts",
           "kind": "import-statement"
@@ -1191,7 +1212,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "dist/worker.jsurl",
+          "path": "dist/lib/worker.jsurl",
           "kind": "import-statement"
         }
       ]
@@ -1202,51 +1223,61 @@
     }
   },
   "outputs": {
-    "dist/esbuild.U2WGCXOK.wasm": {
+    "dist/ServiceWorker.7732L7MS.jsurl": {
       "imports": [],
       "exports": [],
       "inputs": {
-        "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm": {
-          "bytesInOutput": 8227523
+        "dist/ServiceWorker.jsurl": {
+          "bytesInOutput": 1132641
         }
       },
-      "bytes": 8227523
+      "bytes": 1132641
     },
     "dist/service-worker.js.map": {
       "imports": [],
       "exports": [],
       "inputs": {},
-      "bytes": 3654
+      "bytes": 235
     },
     "dist/service-worker.js": {
       "imports": [],
       "exports": [],
       "entryPoint": "src/service-worker.ts",
       "inputs": {
-        "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm": {
-          "bytesInOutput": 69
+        "dist/ServiceWorker.jsurl": {
+          "bytesInOutput": 82
         },
         "src/service-worker.ts": {
-          "bytesInOutput": 1582
+          "bytesInOutput": 38
         }
       },
-      "bytes": 6681
+      "bytes": 541
     },
-    "dist/worker.XCTLX4AT.jsurl": {
+    "dist/IdleWorker.6LS4SO7S.jsurl": {
       "imports": [],
       "exports": [],
       "inputs": {
-        "dist/worker.jsurl": {
-          "bytesInOutput": 983507
+        "src/lib/IdleWorker.jsurl": {
+          "bytesInOutput": 560
         }
       },
-      "bytes": 983507
+      "bytes": 560
+    },
+    "dist/worker.RCJG5JGS.jsurl": {
+      "imports": [],
+      "exports": [],
+      "inputs": {
+        "dist/lib/worker.jsurl": {
+          "bytesInOutput": 974844
+        }
+      },
+      "bytes": 974844
     },
     "dist/pages/[code].js.map": {
       "imports": [],
       "exports": [],
       "inputs": {},
-      "bytes": 397557
+      "bytes": 398481
     },
     "dist/pages/[code].js": {
       "imports": [],
@@ -1406,11 +1437,8 @@
         "node_modules/.pnpm/semver@7.3.4/node_modules/semver/index.js": {
           "bytesInOutput": 1573
         },
-        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/decode.json": {
-          "bytesInOutput": 381
-        },
-        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode_codepoint.js": {
-          "bytesInOutput": 912
+        "node_modules/.pnpm/domelementtype@2.1.0/node_modules/domelementtype/lib/index.js": {
+          "bytesInOutput": 690
         },
         "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/entities.json": {
           "bytesInOutput": 40084
@@ -1421,23 +1449,11 @@
         "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/xml.json": {
           "bytesInOutput": 133
         },
-        "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Tokenizer.js": {
-          "bytesInOutput": 19315
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/decode.json": {
+          "bytesInOutput": 381
         },
-        "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Parser.js": {
-          "bytesInOutput": 9290
-        },
-        "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js": {
-          "bytesInOutput": 8898
-        },
-        "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/index.js": {
-          "bytesInOutput": 4590
-        },
-        "node_modules/.pnpm/domelementtype@2.1.0/node_modules/domelementtype/lib/index.js": {
-          "bytesInOutput": 691
-        },
-        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/tagtypes.js": {
-          "bytesInOutput": 794
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode_codepoint.js": {
+          "bytesInOutput": 912
         },
         "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode.js": {
           "bytesInOutput": 1963
@@ -1452,7 +1468,22 @@
           "bytesInOutput": 3848
         },
         "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/index.js": {
-          "bytesInOutput": 4883
+          "bytesInOutput": 4872
+        },
+        "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Tokenizer.js": {
+          "bytesInOutput": 19315
+        },
+        "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Parser.js": {
+          "bytesInOutput": 9290
+        },
+        "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js": {
+          "bytesInOutput": 8898
+        },
+        "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/index.js": {
+          "bytesInOutput": 4591
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/tagtypes.js": {
+          "bytesInOutput": 793
         },
         "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/stringify.js": {
           "bytesInOutput": 1092
@@ -1476,10 +1507,16 @@
           "bytesInOutput": 972
         },
         "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/FeedHandler.js": {
-          "bytesInOutput": 8095
+          "bytesInOutput": 8096
         },
         "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/index.js": {
-          "bytesInOutput": 3114
+          "bytesInOutput": 3112
+        },
+        "src/lib/IdleWorker.jsurl": {
+          "bytesInOutput": 76
+        },
+        "src/lib/launchIdleWorker.ts": {
+          "bytesInOutput": 174
         },
         "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
           "bytesInOutput": 3976
@@ -1488,37 +1525,37 @@
           "bytesInOutput": 1835
         },
         "src/lib/Database.ts": {
-          "bytesInOutput": 952
+          "bytesInOutput": 965
         },
         "src/lib/ESBuildPackage.tsx": {
-          "bytesInOutput": 13444
-        },
-        "dist/htmlLoader.jsfile": {
-          "bytesInOutput": 10028
+          "bytesInOutput": 12838
         },
         "src/htmlGenerator.ts": {
-          "bytesInOutput": 1281
+          "bytesInOutput": 1102
+        },
+        "src/lib/ErrorCode.tsx": {
+          "bytesInOutput": 978
         },
         "src/lib/getCache.tsx": {
           "bytesInOutput": 121
         },
         "src/lib/rpc.ts": {
-          "bytesInOutput": 192
+          "bytesInOutput": 234
         },
         "src/lib/Packager.ts": {
-          "bytesInOutput": 902
+          "bytesInOutput": 891
         },
         "src/lib/InitialPackager.ts": {
           "bytesInOutput": 149
         },
-        "dist/worker.jsurl": {
+        "dist/lib/worker.jsurl": {
           "bytesInOutput": 68
         },
         "src/pages/[code].tsx": {
           "bytesInOutput": 1484
         }
       },
-      "bytes": 777290
+      "bytes": 769032
     },
     "dist/pages/index.js.map": {
       "imports": [],

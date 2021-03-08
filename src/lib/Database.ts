@@ -108,6 +108,7 @@ export class Database {
   db: IDB.IDBPDatabase;
 
   async load() {
+    if (this.db) return;
     this.db = await IDB.openDB("handles", 5, {
       upgrade(database, oldVersion, newVersion, transaction) {
         if (!database.objectStoreNames.contains("packages"))

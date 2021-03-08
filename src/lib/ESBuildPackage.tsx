@@ -7,29 +7,15 @@ import {
   OnResolveResult,
   Service,
 } from "esbuild";
-import { Plugin } from "esbuild-wasm";
+import { Location, Plugin } from "esbuild-wasm";
 import Mime from "mime/lite";
 import path from "path-browserify";
 import semver from "semver";
 import { generateHTML } from "src/htmlGenerator";
 import { Database } from "src/lib/Database";
 import type { OutputParams } from "src/lib/rpc";
+import { ErrorCode } from "./ErrorCode";
 import { getCache } from "./getCache";
-
-export enum ErrorCode {
-  invalidPackageJSON,
-  emptyDir,
-  missingEntryFiles,
-  missing,
-  errorFetchingPackageJSON,
-  errorGettingPackageJSONFile,
-  parsingPackageJSON,
-  requirePermission,
-  noEntryPoints,
-  resolveFile,
-  fileNotFound,
-  fileAccessDenied,
-}
 
 const TRY_TO_USE_NODE_MODULES = false;
 
@@ -45,6 +31,7 @@ function isValidEntryPoint(point: string) {
 }
 
 export class PackagerError extends Error {
+  build?: ESBuildPackage;
   constructor(code: ErrorCode, ...args) {
     super(...args);
     this.code = code;
@@ -55,6 +42,10 @@ export class PackagerError extends Error {
     return packager;
   }
   code: ErrorCode;
+}
+
+export class PackagerPermissionError extends PackagerError {
+  directoryName: string;
 }
 
 export interface PackageJSON {
@@ -130,11 +121,14 @@ export class ESBuildPackage {
             isFirst ? "" : handle.name,
             entry.name
           );
-          this.dirMap.set(abs, entry);
 
           const rel = path.relative(this.staticRoot, abs);
           if (rel && !rel.startsWith("..") && !path.isAbsolute(rel)) {
-            this.staticContent.set(rel, entry);
+            if (Mime.getType(abs).includes("html")) {
+              this.staticContent.set(rel, entry);
+            }
+          } else {
+            this.dirMap.set(abs, entry);
           }
 
           if (TRY_TO_USE_NODE_MODULES) {
@@ -312,7 +306,6 @@ export class ESBuildPackage {
   relativePath: string;
   static origin: string;
   async saveResultToCache(result: BuildResult) {
-    let encoder = new TextEncoder();
     let outResults: string[] = new Array(result.outputFiles.length);
     let i = 0;
     const cache = await getCache();
@@ -369,12 +362,11 @@ export class ESBuildPackage {
 
       const response = new Response(blob, { headers });
       await cache.put(dest, response);
-      debugger;
       if (type === "text/html" || type === "application/html") {
         let newDest = dest.replace(".html", "");
-        pages.set(fileName, data as string);
 
-        const html = generateHTML(this.package.name, data);
+        const html = generateHTML(this.package.id, data);
+        pages.set(fileName, html as string);
 
         const blob1 = new Blob([html], {
           type,
@@ -383,25 +375,6 @@ export class ESBuildPackage {
         const _response = new Response(blob1, { headers });
 
         await cache.put(newDest, _response);
-
-        if (newDest.includes("/index") || newDest === "index") {
-          newDest = newDest.replace("index", "");
-          const blob2 = new Blob([html], {
-            type,
-          });
-          const _response = new Response(blob2, { headers });
-          await cache.put(newDest, _response);
-
-          if (newDest.endsWith("/")) {
-            newDest = newDest.substring(0, newDest.length - 1);
-            const blob3 = new Blob([html], {
-              type,
-            });
-            const _response = new Response(blob3, { headers });
-            await cache.put(newDest, _response);
-          }
-        }
-        debugger;
       }
       staticFiles[i++] = dest;
     }
@@ -410,7 +383,7 @@ export class ESBuildPackage {
   }
 
   generateRelativePath() {
-    return "/local/" + this.name;
+    return "/local/" + this.id;
   }
 
   async build(service: Service) {
@@ -432,22 +405,29 @@ export class ESBuildPackage {
     }
 
     const entryPoints = this.loadEntryPoints();
-
-    const result = await service.build({
-      ...this.package.esbuild,
-      stdin: {
-        resolveDir: "/" + this.name,
-      },
-      format: "esm",
-      tsconfig,
-      entryPoints,
-      publicPath: ESBuildPackage.origin + this.relativePath,
-      plugins: [this.asPlugin(), ...(this.package.esbuild.plugins || [])],
-      write: false,
-      absWorkingDir: "/" + this.name,
-      nodePaths: ["/node_modules"],
-      outdir: this.relativePath,
-    });
+    let result: BuildResult;
+    try {
+      result = await service.build({
+        ...this.package.esbuild,
+        stdin: {
+          resolveDir: "/",
+        },
+        format: "esm",
+        tsconfig,
+        metafile: "metafile.json",
+        entryPoints,
+        publicPath: ESBuildPackage.origin + this.relativePath,
+        plugins: [this.asPlugin(), ...(this.package.esbuild.plugins || [])],
+        write: false,
+        absWorkingDir: "/",
+        nodePaths: ["/node_modules"],
+        outdir: this.relativePath,
+      });
+    } catch (e) {
+      const err = PackagerError.with(ErrorCode.buildFailed, e);
+      err.build = this;
+      throw err;
+    }
 
     return {
       warnings: result.warnings,
@@ -458,18 +438,28 @@ export class ESBuildPackage {
   staticContent = new Map<string, FileSystemFileHandle>();
   staticRoot = "/public";
 
+  async getFileForLocation(location: Location) {
+    let filename = location.file;
+    if (!path.isAbsolute(filename)) {
+      filename = "/" + filename;
+    }
+    const handle = this.dirMap.get(filename) as FileSystemFileHandle;
+    return await handle.getFile();
+  }
+
   static async load(
     handle: FileSystemDirectoryHandle,
     origin: string,
     relativePath?: string,
-    staticRoot?: string
+    staticRoot?: string,
+    allowRequestPermission = false
   ) {
     const pkg = new ESBuildPackage(handle);
     ESBuildPackage.origin = origin;
     if (staticRoot) {
       pkg.staticRoot = staticRoot;
     }
-    await pkg.reload();
+    await pkg.reload(allowRequestPermission);
     if (relativePath) {
       pkg.relativePath = relativePath;
     }
@@ -591,11 +581,17 @@ export class ESBuildPackage {
     } as Plugin;
   }
 
-  async reload() {
+  async reload(allowRequestPermission = false) {
     if (
       (await this.directory.queryPermission({ mode: "read" })) !== "granted"
     ) {
-      throw new PackagerError(ErrorCode.requirePermission);
+      if (
+        (await this.directory.queryPermission({ mode: "read" })) !== "granted"
+      ) {
+        const error = new PackagerPermissionError(ErrorCode.requirePermission);
+        error.directoryName = this.directory.name;
+        throw error;
+      }
     }
 
     let packageJSONHandle: FileSystemFileHandle;

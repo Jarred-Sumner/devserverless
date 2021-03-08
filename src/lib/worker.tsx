@@ -18,6 +18,7 @@ async function start() {
   service = res[0];
   console.log("ESBuild loaded.");
   console.log("Database loaded.");
+  console.timeEnd("START");
 }
 
 start();
@@ -30,7 +31,7 @@ async function bundle(params: BundleParams) {
   console.timeEnd("Bundle " + params.handle.name);
 
   await database.savePackage(
-    pkg.name,
+    pkg.id,
     params.handle,
     pkg.package?.esbuild ?? null,
     new Date()
@@ -61,7 +62,7 @@ async function bundleById(params: BundleByIDParams) {
   console.timeEnd("Bundle By ID " + handle.name);
 
   await database.savePackage(
-    pkg.name,
+    pkg.id,
     handle,
     pkg.package?.esbuild ?? null,
     new Date()

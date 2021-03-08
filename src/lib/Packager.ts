@@ -2,7 +2,7 @@ import * as IDB from "idb";
 import { OutputParams, Method } from "src/lib/rpc";
 
 export class Packager {
-  worker: SharedWorker;
+  port: MessagePort;
 
   start() {
     const worker = new SharedWorker(globalThis.WORKER_URL, { type: "module" });
@@ -10,9 +10,9 @@ export class Packager {
     worker.port.addEventListener("error", (message) =>
       console.error(message.error)
     );
-    worker.port.start();
 
-    this.worker = worker;
+    this.port = worker.port;
+    worker.port.start();
   }
 
   onBundleComplete: (params: OutputParams) => void;
@@ -31,7 +31,7 @@ export class Packager {
   };
 
   bundleById(id: string, origin: string) {
-    this.worker.port.postMessage({
+    this.port.postMessage({
       method: Method.bundleById,
       params: {
         origin,
@@ -41,7 +41,7 @@ export class Packager {
   }
 
   bundle(handle: FileSystemDirectoryHandle, origin: string) {
-    this.worker.port.postMessage({
+    this.port.postMessage({
       method: Method.bundle,
       params: {
         handle: handle,

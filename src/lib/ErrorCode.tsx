@@ -1,0 +1,16 @@
+export enum ErrorCode {
+  invalidPackageJSON,
+  emptyDir,
+  missingEntryFiles,
+  missing,
+  genericError,
+  errorFetchingPackageJSON,
+  errorGettingPackageJSONFile,
+  parsingPackageJSON,
+  requirePermission,
+  noEntryPoints,
+  resolveFile,
+  fileNotFound,
+  fileAccessDenied,
+  buildFailed,
+}

@@ -37,11 +37,32 @@ if (process.env.NODE_ENV === "development") {
   baseBuildConfig.watch = true;
 }
 
-async function buildSharedWorker() {
+async function buildInlineJS() {
   await build({
     ...baseBuildConfig,
-    entryPoints: ["./src/lib/worker.tsx"],
-    outfile: "dist/worker.jsurl",
+    entryPoints: ["./src/lib/requestPermissionRunner.inlinejs"],
+    loader: {
+      ...baseBuildConfig.loader,
+      ".inlinejs": "ts",
+    },
+    outdir: path.join(__dirname, "dist"),
+    outExtension: { ".js": ".jsfile" },
+    // watch: false,
+  });
+  console.log("Built worker");
+}
+
+async function buildSharedWorker() {
+  await buildInlineJS();
+  await build({
+    ...baseBuildConfig,
+    entryPoints: ["./src/lib/worker.tsx", "./src/ServiceWorker.ts"],
+    loader: {
+      ...baseBuildConfig.loader,
+      ".css": "text",
+    },
+    outdir: path.join(__dirname, "dist"),
+    outExtension: { ".js": ".jsurl" },
     // watch: false,
   });
   console.log("Built worker");

@@ -49,7 +49,6 @@ class HTMLLoader {
       const baseTag = document.querySelector("base");
       const parser = new DOMParser();
       const newDoc = parser.parseFromString(page, "text/html");
-
       for (let script of newDoc.querySelectorAll("script").values()) {
         document.body.appendChild(script);
       }

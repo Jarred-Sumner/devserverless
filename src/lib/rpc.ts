@@ -5,6 +5,7 @@ export enum Method {
   bundle,
   output,
   bundleById,
+  setPort,
 }
 
 export type BundleParams = {

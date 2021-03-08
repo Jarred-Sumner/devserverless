@@ -1,8 +1,9 @@
+import "src/lib/launchIdleWorker";
 import * as IDB from "idb";
 import { Database } from "src/lib/Database";
 import { InitialPackager } from "src/lib/InitialPackager";
 import { Packager } from "src/lib/Packager";
-import WORKER_URL from "dist/worker.jsurl";
+import WORKER_URL from "dist/lib/worker.jsurl";
 
 globalThis.WORKER_URL = WORKER_URL;
 
