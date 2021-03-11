@@ -58,8 +58,25 @@ export class StoredPackage {
     return pkg;
   }
 
+  async resolveStaticHandle() {
+    if (!this.pkg.run?.router) return;
+
+    const staticPath = path.extname(this.pkg.run.router)
+      ? path.join(this.pkg.run.router, "../")
+      : this.pkg.run.router;
+    this.staticHandle = await this.root.resolveDirectoryHandle(
+      staticPath,
+      this.root.root
+    );
+    this.static = new NativeFS(this.staticHandle);
+  }
+
   async load() {
     await this.loadPackageJSON();
+
+    if (!this.staticHandle || !this.static) {
+      await this.resolveStaticHandle();
+    }
 
     this.loadRouter();
   }
@@ -69,6 +86,7 @@ export class StoredPackage {
       this.routerType = RouterType.spa;
       this.router = new SinglePageAppRouter(this.root, this.static);
       this.router.destination = path.basename(this.pkg.run.router);
+      debugger;
     } else {
       this.routerType = RouterType.filesystem;
       this.router = new FilesystemRouter(this.root, this.static);

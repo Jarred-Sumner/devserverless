@@ -29,6 +29,7 @@ devDependencies:
   '@types/wicg-file-system-access': 2020.9.1
   '@types/xmldom': 0.1.30
   esbuild: 0.9.0
+  gzip-cli: 1.2.0
   jest: 26.6.3
   serve-handler: 6.1.3
   typescript: 4.2.3
@@ -1998,6 +1999,14 @@ packages:
     dev: true
     resolution:
       integrity: sha1-Xv+OPmhNVprkyysSgmBOi6YhSfo=
+  /glob-parent/5.1.2:
+    dependencies:
+      is-glob: 4.0.1
+    dev: true
+    engines:
+      node: '>= 6'
+    resolution:
+      integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==
   /glob/7.1.6:
     dependencies:
       fs.realpath: 1.0.0
@@ -2024,6 +2033,17 @@ packages:
     optional: true
     resolution:
       integrity: sha1-8QdIy+dq+WS3yWyTxrzCivEgwIE=
+  /gzip-cli/1.2.0:
+    dependencies:
+      glob: 7.1.6
+      glob-parent: 5.1.2
+      minimist: 1.2.5
+    dev: true
+    engines:
+      node: '>=0.12.10'
+    hasBin: true
+    resolution:
+      integrity: sha512-uMJGySMdAmXrMOoFeTztXDT1NEYQ1n+WoWYvb35ttim1JU3GOxYlGloq9aHXugdkAbldyUrYeLBxlpGBz8NuCg==
   /har-schema/2.0.0:
     dev: true
     engines:
@@ -2317,6 +2337,12 @@ packages:
       node: '>=0.10.0'
     resolution:
       integrity: sha512-arnXMxT1hhoKo9k1LZdmlNyJdDDfy2v0fXjFlmok4+i8ul/6WlbVge9bhM74OpNPQPMGUToDtz+KXa1PneJxOA==
+  /is-extglob/2.1.1:
+    dev: true
+    engines:
+      node: '>=0.10.0'
+    resolution:
+      integrity: sha1-qIwCU1eR8C7TfHahueqXc8gz+MI=
   /is-fullwidth-code-point/3.0.0:
     dev: true
     engines:
@@ -2329,6 +2355,14 @@ packages:
       node: '>=6'
     resolution:
       integrity: sha512-cTIB4yPYL/Grw0EaSzASzg6bBy9gqCofvWN8okThAYIxKJZC+udlRAmGbM0XLeniEJSs8uEgHPGuHSe1XsOLSQ==
+  /is-glob/4.0.1:
+    dependencies:
+      is-extglob: 2.1.1
+    dev: true
+    engines:
+      node: '>=0.10.0'
+    resolution:
+      integrity: sha512-5G0tKtBTFImOqDnLB2hG6Bp2qcKEFduo4tZu9MT/H6NQv/ghhy30o55ufafxJ/LdH79LLs2Kfrn85TLKyA7BUg==
   /is-number/3.0.0:
     dependencies:
       kind-of: 3.2.2
@@ -4781,6 +4815,7 @@ specifiers:
   dom-serializer: ^1.2.0
   esbuild: ^0.9.0
   esbuild-wasm: ^0.9.0
+  gzip-cli: ^1.2.0
   htmlparser2: ^6.0.1
   idb: ^6.0.0
   jest: ^26.6.3

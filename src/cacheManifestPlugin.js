@@ -6,6 +6,7 @@ async function readManifest({ outputs }) {
   const list = Object.keys(outputs)
     .filter((a) => !a.endsWith(".map"))
     .map((a) => a.replace("dist/", "/"))
+    .map((a) => a.replace("prod/", "/"))
     .map((a) => (a.includes("_dev_") ? a : "/_dev_" + a));
 
   if (list.includes("/_dev_/ServiceWorker.jsurl")) {

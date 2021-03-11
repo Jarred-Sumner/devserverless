@@ -89,7 +89,9 @@ async function renderESBuildError(
   <div class="__DevServer__Error">
   <div class="__DevServer__Error-text ${
     !error.location ? "__DevServer__Error-text--no-location" : ""
-  }">${error.text}<span class="__DevServer__Error-text-number">${
+  }">${error.text
+    .replace("[devserverless]", "")
+    .trim()}<span class="__DevServer__Error-text-number">${
     index + 1
   }</span></div>
 `;
@@ -228,7 +230,10 @@ export async function buildError(error: PackagerError) {
         <div class="__DevServer__ErrorPage-heading">
           ${MESSAGE[error.code] || ErrorCode[error.code]} (${error.code})
         </div>
-        <div class="__DevServer__ErrorPage-title">${error.name}</div>
+        <div class="__DevServer__ErrorPage-title">${error.name.replace(
+          "[devserverless] ",
+          ""
+        )}</div>
 
         <div class="__DevServer__ErrorPage-body">${error.message}</div>
         </div>
@@ -239,19 +244,19 @@ export async function buildError(error: PackagerError) {
 
 export async function renderPackagerError(error) {
   try {
-    return `<!DOCTYPE html><html><head><script module>${IDLE_WORKER_CODE}</script><link href="/_dev_/ServiceWorker.css" rel="stylesheet" /></head><body>${await buildError(
+    return `<!DOCTYPE html><html><head><script module>${IDLE_WORKER_CODE}</script><link href="/_dev_/ErrorPage.css" rel="stylesheet" /></head><body>${await buildError(
       error
     )}</body></html>`;
   } catch (exception) {
     console.error("Error building the error page...lol", exception);
-    return `${error.name} - ${error.message}`;
+    return `${error.name.replace("[devserverless]", "")} - ${error.message}`;
   }
 }
 
 export async function injectRenderPackagerError(error) {
   return [
     `<script type="module" module>${IDLE_WORKER_CODE}</script`,
-    `<link href="/_dev_/ServiceWorker.css" rel="stylesheet" />`,
+    `<link href="/_dev_/ErrorPage.css" rel="stylesheet" />`,
     await buildError(error),
   ];
 }

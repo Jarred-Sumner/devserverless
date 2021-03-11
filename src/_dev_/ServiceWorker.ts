@@ -224,6 +224,12 @@ async function processURL(event: FetchEvent) {
 
   const resp = await bundleCache.match(request);
 
+  // if (request.url.includes("/_dist_/importErrorCatcher")) {
+  //   const blob = `
+
+  //   `;
+  // }
+
   if (resp) {
     return resp;
   }

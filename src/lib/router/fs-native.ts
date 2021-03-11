@@ -115,7 +115,7 @@ export class NativeFS {
     return null;
   }
 
-  private async resolveDirectoryHandle(
+  async resolveDirectoryHandle(
     _path: string,
     from: FileSystemDirectoryHandle = this.root
   ) {

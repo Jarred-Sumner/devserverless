@@ -4,7 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-production": "NODE_ENV=production node build.js",
+    "deploy": "scp -r prod/ ubuntu@34.237.218.229:/home/ubuntu/devserver",
+    "gzip": "gzip prod/**/* --extension=gz --extension=br",
+    "move-jsurl": "cp prod/*.jsurl prod/_dev_/; rm prod/*.jsurl",
+    "move-wasm": "cp prod/*.wasm prod/_dev_/; rm prod/*.wasm",
+    "move-jsfile": "cp prod/*.jsfile prod/_dev_/; rm prod/*.jsfile",
+    "move": "pnpm move-jsurl; pnpm move-wasm;",
+    "predeploy": "pnpm build-production && pnpm move && pnpm gzip"
   },
   "author": "Hm",
   "license": "MIT",
@@ -40,6 +48,7 @@
     "@types/wicg-file-system-access": "^2020.9.1",
     "@types/xmldom": "^0.1.30",
     "esbuild": "^0.9.0",
+    "gzip-cli": "^1.2.0",
     "jest": "^26.6.3",
     "serve-handler": "^6.1.3",
     "typescript": "^4.2.3"

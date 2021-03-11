@@ -49,15 +49,49 @@ const PackageProvider = ({ children }) => {
     DirectoryLoadState.loading
   );
   const setDirectory = React.useCallback(
-    (dirHandle) => {
+    async (dirHandle) => {
       // (globalThis["IDLE_WORKER"] as SharedWorker).port.postMessage(dirHandle);
-      _setDirectory(dirHandle);
+
       if (dirHandle) {
-        packager.database
-          .saveDir(dirHandle)
-          .then((a) => console.log("Saved dirHandle"));
+        try {
+          pkgJSON.handle = await dirHandle.getFileHandle("package.json");
+        } catch (exception) {
+          alert("Could not find package.json in " + dirHandle.name);
+          return;
+        }
+
+        if (pkgJSON.run?.router) {
+          const fs = new NativeFS(dirHandle);
+          const record = StoredPackage.fromRecord({
+            id: getPackageID(),
+            lastBuild: null,
+            handle: dirHandle,
+            staticHandle: path.extname(pkgJSON.run?.router)
+              ? await fs.resolveDirectoryHandle(
+                  path.normalize(path.join(pkgJSON.run?.router, "../"))
+                )
+              : await fs.resolveDirectoryHandle(
+                  path.normalize(path.join(pkgJSON.run?.router))
+                ),
+            routerType: path.extname(pkgJSON.run.router)
+              ? RouterType.spa
+              : RouterType.filesystem,
+          });
+          if (packager.storedPackage) {
+            Object.assign(packager.storedPackage, record);
+            await packager.database.savePackage(packager.storedPackage);
+          } else {
+            const storedPackage = StoredPackage.fromRecord(record);
+            await packager.database.savePackage(storedPackage);
+            packager.storedPackage = storedPackage;
+          }
+
+          await packager.database.saveDir(dirHandle);
+          pkgJSON.process(await (await pkgJSON.handle.getFile()).text());
+        }
       }
 
+      _setDirectory(dirHandle);
       setDirectoryLoadState(DirectoryLoadState.loaded);
     },
     [_setDirectory, setDirectoryLoadState]
@@ -69,13 +103,21 @@ const PackageProvider = ({ children }) => {
         if (dir) {
           // (globalThis["IDLE_WORKER"] as SharedWorker).port.postMessage(dir);
 
-          if ((await dir.queryPermission({ mode: "read" })) !== "granted") {
+          if (
+            (!globalThis.navigator.userActivation ||
+              globalThis.navigator.userActivation.isActive) &&
+            (await dir.queryPermission({ mode: "read" })) !== "granted"
+          ) {
             const res = await dir.requestPermission({ mode: "read" });
             if (res === "denied") return null;
           }
         }
 
-        if (dir) {
+        if (
+          dir &&
+          (!globalThis.navigator.userActivation ||
+            globalThis.navigator.userActivation.isActive)
+        ) {
           pkgJSON.handle = await dir.getFileHandle("package.json");
 
           pkgJSON.process(await (await pkgJSON.handle.getFile()).text());
@@ -518,6 +560,7 @@ const NewProjectPage = () => {
         return;
       }
       const handle = await window.showDirectoryPicker();
+      await navigator.storage.persist();
       if (await setDirectory(handle)) {
         history.pushState({}, document.title, "/_dev_/config");
       }
@@ -732,6 +775,9 @@ const RoutingSection = ({}) => {
     }
     setSavedRoute(pkgJSON.run.router);
 
+    if (!pkgJSON.handle) {
+      pkgJSON.handle = await directory.getFileHandle("package.json");
+    }
     await pkgJSON.handle.requestPermission({ mode: "readwrite" });
     await pkgJSON.save();
     const record = StoredPackage.fromRecord({

@@ -17,7 +17,7 @@ export const IDLE_WORKER_CODE = `
     globalThis
       .navigator
       .serviceWorker
-      .register("/_dev_/service-worker.js", {scope: '/'})
+      .register("/service-worker.js", {scope: '/'})
       .then(function (registration) {})
       .catch(function (err) {});
     globalThis["REGISTERED_SERVICE_WORKER"] = true;
