@@ -11,6 +11,7 @@ if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = "development";
 }
 
+const BUILD_FOLDER = process.env.NODE_ENV === "development" ? "dist" : "prod";
 const port = parseInt(String(process.env.PORT || 8029), 10);
 const builds = [];
 
@@ -19,7 +20,7 @@ const baseBuildConfig = {
   platform: "browser",
   format: "esm",
   minifySyntax: true,
-  outdir: path.join(__dirname, "dist"),
+  outdir: path.join(__dirname, BUILD_FOLDER),
   publicPath: (process.env.PUBLIC_PATH ?? "") + "/_dev_/",
   outbase: "src",
   loader: {
@@ -82,43 +83,48 @@ async function buildServiceWorker() {
       ".json": "json",
     },
     outExtension: { ".js": ".js" },
+    outdir: undefined,
+    outfile: path.join(__dirname, BUILD_FOLDER, "service-worker.js"),
     plugins: [cacheManifestPlugin(builds)],
     // watch: false,
   });
 }
 
 async function start() {
-  await rm(path.join(__dirname, "dist"), { force: true, recursive: true });
-  await fs.promises.mkdir(path.join(__dirname, "dist"));
-  await fs.promises.mkdir(path.join(__dirname, "dist/_dev_"));
+  await rm(path.join(__dirname, BUILD_FOLDER), {
+    force: true,
+    recursive: true,
+  });
+  await fs.promises.mkdir(path.join(__dirname, BUILD_FOLDER));
+  await fs.promises.mkdir(path.join(__dirname, `${BUILD_FOLDER}/_dev_`));
   await fs.promises.copyFile(
     path.join(__dirname, "src", "_dev_", "index.html"),
-    path.join(__dirname, "dist", "_dev_", "index.html")
+    path.join(__dirname, BUILD_FOLDER, "_dev_", "index.html")
   );
   await fs.promises.copyFile(
     path.join(__dirname, "src", "_dev_", "favicon.png"),
-    path.join(__dirname, "dist", "_dev_", "favicon.png")
+    path.join(__dirname, BUILD_FOLDER, "_dev_", "favicon.png")
   );
   await fs.promises.copyFile(
     path.join(__dirname, "src", "_dev_", "setup.html"),
-    path.join(__dirname, "dist", "_dev_", "setup.html")
+    path.join(__dirname, BUILD_FOLDER, "_dev_", "setup.html")
   );
   await fs.promises.copyFile(
     path.join(__dirname, "src", "_dev_", "manifest.json"),
-    path.join(__dirname, "dist", "_dev_", "manifest.json")
+    path.join(__dirname, BUILD_FOLDER, "_dev_", "manifest.json")
   );
 
   if (process.env.NODE_ENV === "development") {
     fs.watch(
-      path.join(__dirname, "dist"),
+      path.join(__dirname, BUILD_FOLDER),
       { recursive: true, persistent: true, encoding: "utf-8" },
       (event, name) => {
         if (name.includes("_dev_")) return;
 
         if (name.includes(".wasm") || name.includes(".jsurl")) {
           fs.copyFile(
-            path.resolve(__dirname, "dist", name),
-            path.join(__dirname, "dist", "_dev_", name),
+            path.resolve(__dirname, BUILD_FOLDER, name),
+            path.join(__dirname, BUILD_FOLDER, "_dev_", name),
             (a) => console.log(`Copied ${name}`)
           );
         }
@@ -134,6 +140,7 @@ async function start() {
       entryPoints: [
         path.join(__dirname, "src", "_dev_", "setup.tsx"),
         path.join(__dirname, "src", "_dev_", "index.tsx"),
+        path.join(__dirname, "src", "_dev_", "ErrorPage.css"),
       ],
       metafile: true,
     });
@@ -171,17 +178,23 @@ async function start() {
     const builder = await build({
       ...baseBuildConfig,
       entryPoints: [
-        "./src/_dev_/lib/worker.tsx",
-        "./src/_dev_/service-worker.ts",
-        "./src/_dev_/setup.tsx",
-        "./src/_dev_/index.tsx",
+        path.join(__dirname, "src", "_dev_", "setup.tsx"),
+        path.join(__dirname, "src", "_dev_", "index.tsx"),
       ],
-      outdir: path.join(__dirname, "dist"),
-      outbase: "src",
-      bundle: true,
-      platform: "browser",
-      sourcemap: "both",
+      metafile: true,
     });
+
+    for (let name of fs.readdirSync(path.join(__dirname, BUILD_FOLDER))) {
+      if (name.includes(".wasm") || name.includes(".jsurl")) {
+        fs.copyFileSync(
+          path.resolve(__dirname, BUILD_FOLDER, name),
+          path.join(__dirname, BUILD_FOLDER, "_dev_", name)
+        );
+      }
+    }
+
+    await buildServiceWorker();
+
     console.log("Finished.", builder);
   }
 }
