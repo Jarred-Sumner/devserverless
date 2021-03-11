@@ -1,86 +1,4 @@
-:root {
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
-  --monospace: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
-  --system: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
-}
-
-@font-face {
-  font-family: emoji;
-
-  /* Fonts for text outside emoji blocks */
-  src: local("Droid Sans Mono"), local("Lucida Console"),
-    local("Arial Monospaced"), local(Arial);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-:root {
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
-
-  --hud-z-index: 1;
-}
-
-html,
-body {
-  overscroll-behavior-x: none;
-  overscroll-behavior-y: none;
-}
-
-body {
-  touch-action: pan-x, pan-y, pan-left, pan-right, pan-up, pan-down;
-  font-family: var(--font-family);
-}
-
-html,
-body,
-textarea,
-input,
-label {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-}
-
-form {
-  margin: 0;
-  padding: 0;
-}
-
-#game_canvas {
-  position: static !important;
-  top: unset !important;
-  bottom: unset !important;
-  left: unset !important;
-  right: unset !important;
-  contain: layout;
-}
-
-html {
-  background-color: rgb(61, 59, 87);
-  color: white;
-  overflow-x: hidden;
-}
-:root {
-  --x-padding: 24px;
-  --y-padding: 16px;
-  --y-padding-half: 8px;
-}
+@import "./shared.css";
 
 .__DevServer__ErrorPage {
   display: flex;
@@ -174,6 +92,8 @@ html {
   font-variant: small-caps;
   font-size: 1.4rem;
   margin-left: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .__DevServer__Error-lineNumber,

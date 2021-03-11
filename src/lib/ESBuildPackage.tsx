@@ -1,21 +1,24 @@
-import {
-  BuildOptions,
+import { build } from "esbuild-wasm";
+import type {
+  Location,
+  Plugin,
   BuildResult,
   OnLoadArgs,
   OnLoadResult,
   OnResolveArgs,
   OnResolveResult,
-  Service,
-} from "esbuild";
-import { Location, Plugin } from "esbuild-wasm";
+} from "esbuild-wasm";
 import Mime from "mime/lite";
 import path from "path-browserify";
-import semver from "semver";
 import { generateHTML } from "src/htmlGenerator";
 import { Database } from "src/lib/Database";
+import { PackageJSON } from "src/lib/PackageJSON";
+import { Route } from "src/lib/Route";
+import { NativeFS } from "src/lib/router/fs-native";
 import type { OutputParams } from "src/lib/rpc";
 import { ErrorCode } from "./ErrorCode";
 import { getCache } from "./getCache";
+import { DomUtils, Parser } from "htmlparser2";
 
 const TRY_TO_USE_NODE_MODULES = false;
 
@@ -48,145 +51,14 @@ export class PackagerPermissionError extends PackagerError {
   directoryName: string;
 }
 
-export interface PackageJSON {
-  name: string;
-  version: string;
-
-  esbuild: Partial<BuildOptions>;
-  dependencies: Object;
-  devDependencies: Object;
-  peerDependencies: Object;
-  optionalDependencies: Object;
-}
-
-async function resolveFileHandle(
-  name: string,
-  handle: FileSystemDirectoryHandle
-) {
-  return await handle.getFileHandle(name);
-}
-
 export class ESBuildPackage {
-  directory: FileSystemDirectoryHandle;
-  package: PackageJSON;
-  name: string;
-  id: string;
-  openedAt: Date;
-  packageHandle: FileSystemFileHandle;
-  constructor(directory: FileSystemDirectoryHandle) {
-    this.directory = directory;
+  root: NativeFS;
+  pkg: PackageJSON;
+
+  constructor(root: NativeFS, pkg: PackageJSON) {
+    this.root = root;
+    this.pkg = pkg;
   }
-
-  async resolveMain(moduleId: string, relative: string) {
-    const moduleBase = path.join(relative, "node_modules", moduleId);
-    const pkg = this.dirMap.get(path.join(moduleBase, "package.json"));
-
-    const json = JSON.parse(await (await pkg.getFile()).text());
-    if (json.browser) {
-      return path.join(moduleBase, json.browser);
-    } else if (json.module) {
-      return path.join(moduleBase, json.module);
-    } else if (json.main) {
-      return path.join(moduleBase, json.main);
-    } else {
-      return path.join(moduleBase, "index.js");
-    }
-  }
-
-  dirMap = new Map<string, FileSystemHandle>();
-  private async resolveDir(
-    handle: FileSystemDirectoryHandle,
-    parentName: string,
-    isFirst = false
-  ) {
-    for await (const entry of handle.values()) {
-      switch (entry.kind) {
-        case "directory": {
-          await this.resolveDir(
-            entry,
-            isFirst ? parentName : path.join(parentName, handle.name)
-          );
-
-          if (!TRY_TO_USE_NODE_MODULES) {
-            if (entry.name === "node_modules") {
-              continue;
-            }
-          }
-          break;
-        }
-
-        case "file": {
-          const abs = path.join(
-            parentName,
-            isFirst ? "" : handle.name,
-            entry.name
-          );
-
-          const rel = path.relative(this.staticRoot, abs);
-          if (rel && !rel.startsWith("..") && !path.isAbsolute(rel)) {
-            if (Mime.getType(abs)?.includes("html")) {
-              this.staticContent.set(rel, entry);
-            }
-          } else {
-            this.dirMap.set(abs, entry);
-          }
-
-          if (TRY_TO_USE_NODE_MODULES) {
-            if (abs.includes("node_modules")) {
-              this.dirMap.set(abs.replace("/node_modules", ""), entry);
-            }
-          }
-
-          break;
-        }
-      }
-    }
-
-    this.dirMap.set(path.join(parentName, isFirst ? "" : handle.name), handle);
-  }
-  dependencyKeys = [
-    "dependencies",
-    "optionalDependencies",
-    "peerDependencies",
-    "devDependencies",
-  ];
-
-  dependencyPaths = new Map<string, string>();
-  dependencyNames = new Map<string, string>();
-
-  async buildFileTree() {
-    await this.resolveDir(this.directory, "/", true);
-
-    if (TRY_TO_USE_NODE_MODULES) {
-      for (let key of this.dependencyKeys) {
-        if (this.package[key]) {
-          for (let moduleId in this.package[key]) {
-            const main = await this.resolveMain(moduleId, "/");
-            if (this.dirMap.has(main)) {
-              this.dependencyPaths.set(moduleId, main);
-            }
-          }
-        }
-      }
-    } else {
-      for (let key of this.dependencyKeys) {
-        if (this.package[key]) {
-          for (let moduleId in this.package[key]) {
-            let version = this.package[key][moduleId].replace(/\^/gm, "");
-            if (version === null) {
-              this.dependencyNames.set(moduleId, `${moduleId}`);
-            } else {
-              this.dependencyNames.set(
-                moduleId,
-                `${moduleId}@${semver.clean(version, false)}`
-              );
-            }
-          }
-        }
-      }
-    }
-  }
-  allDependencies = new Map<string, string>();
 
   extensionsToTry = [
     ".js",
@@ -207,13 +79,20 @@ export class ESBuildPackage {
     resolveDir: string,
     canRetry = true
   ) {
-    if (this.dirMap.has(_path)) {
+    debugger;
+    if (_path.includes("//")) {
+      _path = _path.replace(/\/+/gm, "/");
+    }
+
+    const fs = this.root;
+    if (await fs.exists(_path)) {
       return _path;
     }
 
     if (importer && !_path.startsWith("/")) {
       _path = path.normalize(path.join(path.dirname(importer), "../", _path));
-      if (this.dirMap.has(_path)) {
+
+      if (await fs.exists(_path)) {
         return _path;
       }
     }
@@ -221,18 +100,15 @@ export class ESBuildPackage {
     let newPath = "";
     for (let ext of this.extensionsToTry) {
       newPath = _path + ext;
-      if (this.dirMap.has(newPath)) {
+
+      if (await fs.exists(newPath)) {
         return newPath;
       }
     }
 
-    if (this.dependencyPaths.has(_path)) {
-      return this.dependencyPaths.get(_path);
-    }
-
     if (importer && importer.startsWith("/") && canRetry) {
       return this.resolve(
-        path.join(path.dirname(importer), _path),
+        path.join(resolveDir, _path),
         importer,
         resolveDir,
         false
@@ -240,38 +116,6 @@ export class ESBuildPackage {
     }
   }
 
-  toJSON() {
-    return {
-      directory: this.directory,
-      package: this.package,
-      name: this.name,
-      id: this.id,
-      openedAt: this.openedAt,
-      packageHandle: this.packageHandle,
-    };
-  }
-
-  fromJSON(json: ReturnType<ESBuildPackage["toJSON"]>) {
-    Object.assign(this, json);
-    return this;
-  }
-
-  loadEntryPoints() {
-    if (!this.package?.esbuild?.entryPoints?.length) {
-      throw new PackagerError(
-        ErrorCode.noEntryPoints,
-        'No entry points found in package.json file. Expected {esbuild: { entryPoints: ["file-in-here.js"]}}'
-      );
-    }
-
-    return (this.usedEntryPoints = this.package.esbuild.entryPoints.filter(
-      isValidEntryPoint
-    ));
-  }
-
-  usedEntryPoints = [];
-
-  entryPoints: BuildOptions["entryPoints"];
   static pluginName = "devserverless";
 
   private emitResolveError({
@@ -301,16 +145,15 @@ export class ESBuildPackage {
   }
 
   alwaysRequestPermissions = false;
-  static permissionMode = { mode: "read" };
-  private fileHandleCache = new Map<string, FileSystemFileHandle>();
+  static readonly permissionMode = { mode: "read" };
   relativePath: string;
   static origin: string;
-  async saveResultToCache(result: BuildResult) {
+  async saveResultToCache(result: BuildResult, route: Route) {
     let outResults: string[] = new Array(result.outputFiles.length);
     let i = 0;
     const cache = await getCache();
     for (let file of result.outputFiles) {
-      const dest = ESBuildPackage.origin + file.path;
+      const dest = globalThis.location.origin + file.path;
       const headers = new Headers();
       headers.set("Content-Length", file.contents.byteLength.toString(10));
       headers.set("Content-Type", Mime.getType(file.path).toString());
@@ -326,227 +169,134 @@ export class ESBuildPackage {
       outResults[i++] = dest;
     }
 
-    const staticFiles = new Array(this.staticContent.size) as string[];
-    i = 0;
-    const pages = new Map<string, string>();
-    for (let [fileName, handle] of this.staticContent.entries()) {
-      const dest =
-        ESBuildPackage.origin +
-        path.join(
-          this.relativePath,
-          fileName.replace("/" + this.staticRoot, "")
-        );
-      const file = await handle.getFile();
-      const type = Mime.getType(fileName) as string;
-      let blob: Blob;
-
-      let data: string | ArrayBuffer;
-      let byteLength = 0;
-      if (type.includes("text") || type.includes("application")) {
-        data = await file.text();
-      } else {
-        data = await file.arrayBuffer();
-        byteLength = data.byteLength;
-      }
-
-      const headers = new Headers();
-      if (byteLength > 0) {
-        headers.set("Content-Length", byteLength.toString(10));
-      }
-
-      headers.set("Content-Type", type);
-
-      blob = new Blob([data], {
-        type,
-      });
-
-      const response = new Response(blob, { headers });
-      await cache.put(dest, response);
-      if (type === "text/html" || type === "application/html") {
-        let newDest = dest.replace(".html", "");
-
-        const html = generateHTML(this.id, data);
-        pages.set(fileName, html as string);
-
-        const blob1 = new Blob([html], {
-          type,
-        });
-
-        const _response = new Response(blob1, { headers });
-
-        await cache.put(newDest, _response);
-      }
-      staticFiles[i++] = dest;
-    }
-
-    return { entryPoints: outResults, staticFiles: staticFiles, pages };
+    return { entryPoints: outResults };
   }
 
   generateRelativePath() {
-    return "/local/" + this.id;
+    return "/";
   }
 
-  async build(service: Service) {
-    await this.buildFileTree();
+  async build(route: Route) {
+    this.relativePath = route.absWorkingDirectory;
 
-    if (!this.relativePath) {
-      this.relativePath = this.generateRelativePath();
-    }
-    // debugger;
-
+    const tsconfigFile = await this.root.nativeFile("tsconfig.json");
     let tsconfig = undefined;
-    if (this.dirMap.has("/tsconfig.json")) {
-      let file = await (this.dirMap.get(
-        "/tsconfig.json"
-      ) as FileSystemFileHandle).getFile();
-      tsconfig = await file.text();
-    } else if (this.package.esbuild["tsconfig"]) {
-      tsconfig = JSON.stringify(this.package.esbuild["tsconfig"]);
+    if (tsconfigFile) {
+      try {
+        tsconfig = await tsconfigFile.text();
+      } catch (exception) {
+        const err = PackagerError.with(ErrorCode.invalidTSConfig, exception);
+        err.build = this;
+        throw err;
+      }
     }
 
-    const entryPoints = this.loadEntryPoints();
+    const entryPoints = route.entryPoints;
     let result: BuildResult;
+    const config = {
+      ...this.pkg.esbuild,
+      format: "esm",
+      tsconfig,
+      metafile: true,
+      entryPoints,
+      publicPath: ESBuildPackage.origin + this.relativePath,
+      plugins: [this.asPlugin()],
+      write: false,
+      loader: this.pkg.esbuild.loader
+        ? this.pkg.esbuild.loader
+        : {
+            ".js": "jsx",
+            ".ts": "tsx",
+            ".tsx": "tsx",
+          },
+      absWorkingDir: this.relativePath,
+      nodePaths: ["/node_modules"],
+      outdir: this.relativePath,
+      bundle: true,
+    };
+
     try {
-      result = await service.build({
-        ...this.package.esbuild,
-        stdin: {
-          resolveDir: "/",
-        },
-        format: "esm",
-        tsconfig,
-        metafile: "metafile.json",
-        entryPoints,
-        publicPath: ESBuildPackage.origin + this.relativePath,
-        plugins: [this.asPlugin(), ...(this.package.esbuild.plugins || [])],
-        write: false,
-        absWorkingDir: "/",
-        nodePaths: ["/node_modules"],
-        outdir: this.relativePath,
-      });
+      result = await build(config);
     } catch (e) {
       const err = PackagerError.with(ErrorCode.buildFailed, e);
       err.build = this;
       throw err;
     }
 
+    for (let script of route.builder.scripts.values()) {
+      script.attribs["type"] = "module";
+      script.attribs["defer"] = "";
+      script.attribs["data-src"] = script.attribs["src"];
+      // script.attribs[
+      //   "src"
+      // ] = `/_dist_/importErrorCatcher?url=${encodeURIComponent(
+      //   script.attribs["src"]
+      // )}`;
+    }
+    const html = route.renderToString(result, config);
+
     return {
       warnings: result.warnings,
-      ...(await this.saveResultToCache(result)),
+      ...(await this.saveResultToCache(result, route)),
+      html,
     } as OutputParams;
   }
 
-  staticContent = new Map<string, FileSystemFileHandle>();
-  staticRoot = "/public";
-
   async getFileForLocation(location: Location) {
-    let filename = location.file;
-    if (!path.isAbsolute(filename)) {
-      filename = "/" + filename;
-    }
-    const handle = this.dirMap.get(filename) as FileSystemFileHandle;
-    if (handle) {
-      return await handle.getFile();
-    } else {
-      return null;
-    }
-  }
-
-  static async load(
-    handle: FileSystemDirectoryHandle,
-    origin: string,
-    relativePath?: string,
-    staticRoot?: string,
-    allowRequestPermission = false
-  ) {
-    const pkg = new ESBuildPackage(handle);
-    ESBuildPackage.origin = origin;
-    if (staticRoot) {
-      pkg.staticRoot = staticRoot;
-    }
-    await pkg.reload(allowRequestPermission);
-    if (relativePath) {
-      pkg.relativePath = relativePath;
-    }
-
-    return pkg;
+    return await this.root.nativeFile(location.file);
   }
 
   resolveFile = async (opts: OnResolveArgs): Promise<OnResolveResult> => {
-    //#ifdef VERBOSE
-    console.log("[Resolve]", opts.path, opts.importer, opts.resolveDir);
-    //#endif
-    const {
-      path: _path,
-      importer,
-      namespace,
-      resolveDir,
-      kind,
-      pluginData,
-    } = opts;
+    const components = opts.path.split("/");
+    const pkgName = components[0];
 
-    let resolvedPath: string;
-
-    if (importer) {
-      try {
-        resolvedPath = await this.resolve(_path, importer, resolveDir);
-      } catch (exception) {
-        return this.emitResolveError({
-          ...opts,
-          code: ErrorCode.resolveFile,
-        });
-      }
-    } else {
-      resolvedPath = "/" + _path;
+    if (this.pkg.allDependencies.has(pkgName)) {
+      let file =
+        components.length > 1 ? `/${components.slice(1).join("/")}` : "";
+      return {
+        path: `https://jspm.dev/${this.pkg.allDependencies.get(
+          pkgName
+        )}${file}`,
+        external: true,
+        // namespace: "esbuild-pkg",
+      };
     }
 
-    if (!resolvedPath) {
-      const components = opts.path.split("/");
-      const pkgName = components[0];
-      if (this.dependencyNames.has(pkgName)) {
-        let file = components.length > 1 ? `/${components.join("/")}` : "";
-        return {
-          path: `https://jspm.dev/${this.dependencyNames.get(pkgName)}${file}`,
-          external: true,
-          // namespace: "esbuild-pkg",
-        };
+    let resolvedPath = path.join(opts.resolveDir, path.normalize(opts.path));
+
+    if (!path.isAbsolute(resolvedPath) && opts.importer) {
+      resolvedPath = path.join(resolvedPath, opts.importer);
+    } else if (!path.isAbsolute(resolvedPath) && !opts.importer) {
+      resolvedPath = path.join(resolvedPath, opts.importer);
+    }
+
+    let doesExist = await this.root.exists(resolvedPath);
+    if (!doesExist && path.extname(resolvedPath) === "") {
+      let origPath = resolvedPath;
+      for (let extension of this.textExtensionsToTry) {
+        resolvedPath = origPath + extension;
+        if (await this.root.exists(resolvedPath)) {
+          return {
+            path: resolvedPath,
+            external: false,
+          };
+        }
       }
     }
 
-    // if (this.alwaysRequestPermissions) {
-    //   switch (await handle.queryPermission(ESBuildPackage.permissionMode)) {
-    //     case "denied": {
-    //       return this.emitResolveError({
-    //         ...opts,
-    //         code: ErrorCode.fileAccessDenied,
-    //         message: `Your browser isn't allowing access to file at "${path}"`,
-    //       });
-    //       break;
-    //     }
-    //     case "prompt": {
-    //       if (
-    //         (await handle.requestPermission(ESBuildPackage.permissionMode)) !==
-    //         "granted"
-    //       ) {
-    //         return this.emitResolveError({
-    //           ...opts,
-    //           code: ErrorCode.fileAccessDenied,
-    //           message: `Your browser isn't allowing access to file at "${path}"`,
-    //         });
-    //       }
-    //       break;
-    //     }
-
-    //     case "granted": {
-    //       break;
-    //     }
-    //   }
-    // }
+    if (!doesExist) {
+      return {
+        errors: [
+          {
+            text: `404 - File not found: ${opts.path}`,
+          },
+        ],
+      };
+    }
 
     return {
       path: resolvedPath,
       external: false,
-
-      // namespace: "esbuild-pkg",
     };
   };
 
@@ -555,22 +305,22 @@ export class ESBuildPackage {
     console.log("[Load]", opts);
     //#endif
 
-    const handle: FileSystemFileHandle = this.dirMap.get(opts.path);
-    const file = await handle.getFile();
-
-    if (Mime.getType(file.name)?.includes("image")) {
+    // Use static folder for files
+    if (
+      opts.namespace === "file" ||
+      Mime.getType(path.extname(opts.path))?.includes("image")
+    ) {
       return {
-        contents: new Uint8Array(await file.arrayBuffer()),
-        resolveDir: path.dirname(opts.path),
-        loader: "default",
-      };
-    } else {
-      return {
-        contents: await file.text(),
-        resolveDir: path.dirname(opts.path),
+        contents: new Uint8Array(await this.root.readFileBinary(opts.path)),
         loader: "default",
       };
     }
+
+    return {
+      contents: await this.root.readFileText(opts.path),
+      // resolveDir: path.dirname(opts.path),
+      loader: "default",
+    };
   };
 
   asPlugin() {
@@ -583,63 +333,5 @@ export class ESBuildPackage {
         build.onLoad({ filter: /.*/ }, loadFile);
       },
     } as Plugin;
-  }
-
-  async reload(allowRequestPermission = false) {
-    if (
-      (await this.directory.queryPermission({ mode: "read" })) !== "granted"
-    ) {
-      if (
-        (await this.directory.queryPermission({ mode: "read" })) !== "granted"
-      ) {
-        const error = new PackagerPermissionError(ErrorCode.requirePermission);
-        error.directoryName = this.directory.name;
-        throw error;
-      }
-    }
-
-    let packageJSONHandle: FileSystemFileHandle;
-    try {
-      packageJSONHandle = await this.directory.getFileHandle("package.json", {
-        create: false,
-      });
-    } catch (exception) {
-      throw PackagerError.with(ErrorCode.errorFetchingPackageJSON, exception);
-    }
-
-    let packageJSONFile: File;
-    try {
-      packageJSONFile = await packageJSONHandle.getFile();
-    } catch (exception) {
-      throw PackagerError.with(
-        ErrorCode.errorGettingPackageJSONFile,
-        exception
-      );
-    }
-
-    let packageJSON;
-
-    try {
-      const packageJSONText = await packageJSONFile.text();
-      packageJSON = JSON.parse(packageJSONText);
-    } catch (exception) {
-      throw PackagerError.with(ErrorCode.parsingPackageJSON, exception);
-    }
-    const root = this.directory;
-
-    this.package = packageJSON;
-    this.name = packageJSON.name;
-    this.directory = root;
-    this.id = root.name;
-    this.openedAt = new Date();
-    this.packageHandle = packageJSONHandle;
-  }
-
-  database: Database;
-
-  static async fromDirectory(root: FileSystemDirectoryHandle) {
-    const pkg = new ESBuildPackage(root);
-    await pkg.reload();
-    return pkg;
   }
 }

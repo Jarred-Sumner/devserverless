@@ -4,7 +4,7 @@ const handler = require("serve-handler");
 const http = require("http");
 const fs = require("fs");
 const util = require("util");
-
+const cacheManifestPlugin = require("./src/cacheManifestPlugin");
 const rm = util.promisify(fs.rm);
 
 if (!process.env.NODE_ENV) {
@@ -12,13 +12,16 @@ if (!process.env.NODE_ENV) {
 }
 
 const port = parseInt(String(process.env.PORT || 8029), 10);
+const builds = [];
 
 const baseBuildConfig = {
   bundle: true,
   platform: "browser",
   format: "esm",
   minifySyntax: true,
-  publicPath: process.env.PUBLIC_PATH || `http://localhost:${port}`,
+  outdir: path.join(__dirname, "dist"),
+  publicPath: (process.env.PUBLIC_PATH ?? "") + "/_dev_/",
+  outbase: "src",
   loader: {
     ".jsfile": "text",
     ".jsurl": "file",
@@ -38,75 +41,105 @@ if (process.env.NODE_ENV === "development") {
 }
 
 async function buildInlineJS() {
-  await build({
+  const inline = await build({
     ...baseBuildConfig,
-    entryPoints: ["./src/lib/requestPermissionRunner.inlinejs"],
+    entryPoints: ["./src/_dev_/requestPermissionRunner.inlinejs"],
     loader: {
       ...baseBuildConfig.loader,
       ".inlinejs": "ts",
     },
-    outdir: path.join(__dirname, "dist"),
+    metafile: true,
     outExtension: { ".js": ".jsfile" },
     // watch: false,
   });
+  builds.push(inline);
   console.log("Built worker");
 }
 
 async function buildSharedWorker() {
   await buildInlineJS();
-  await build({
+  const workers = await build({
     ...baseBuildConfig,
-    entryPoints: ["./src/lib/worker.tsx", "./src/ServiceWorker.ts"],
+    entryPoints: ["./src/_dev_/worker.tsx", "./src/_dev_/ServiceWorker.ts"],
     loader: {
       ...baseBuildConfig.loader,
-      ".css": "text",
     },
-    outdir: path.join(__dirname, "dist"),
     outExtension: { ".js": ".jsurl" },
+    metafile: true,
     // watch: false,
   });
+  builds.push(workers);
   console.log("Built worker");
 }
 
-async function buildHtmlLoader() {
+async function buildServiceWorker() {
   await build({
     ...baseBuildConfig,
-    entryPoints: ["./src/htmlLoader.ts"],
-    outfile: "dist/htmlLoader.jsfile",
+    entryPoints: ["./src/_dev_/service-worker.ts"],
+    loader: {
+      ...baseBuildConfig.loader,
+      ".css": "text",
+      ".json": "json",
+    },
+    outExtension: { ".js": ".js" },
+    plugins: [cacheManifestPlugin(builds)],
     // watch: false,
   });
-  console.log("Built html loader");
 }
 
 async function start() {
   await rm(path.join(__dirname, "dist"), { force: true, recursive: true });
   await fs.promises.mkdir(path.join(__dirname, "dist"));
+  await fs.promises.mkdir(path.join(__dirname, "dist/_dev_"));
   await fs.promises.copyFile(
-    path.join(__dirname, "src", "index.html"),
-    path.join(__dirname, "dist", "index.html")
+    path.join(__dirname, "src", "_dev_", "index.html"),
+    path.join(__dirname, "dist", "_dev_", "index.html")
   );
   await fs.promises.copyFile(
-    path.join(__dirname, "src", "[code].html"),
-    path.join(__dirname, "dist", "[code].html")
+    path.join(__dirname, "src", "_dev_", "favicon.png"),
+    path.join(__dirname, "dist", "_dev_", "favicon.png")
   );
   await fs.promises.copyFile(
-    path.join(__dirname, "src", "manifest.json"),
-    path.join(__dirname, "dist", "manifest.json")
+    path.join(__dirname, "src", "_dev_", "setup.html"),
+    path.join(__dirname, "dist", "_dev_", "setup.html")
   );
-  await buildHtmlLoader();
+  await fs.promises.copyFile(
+    path.join(__dirname, "src", "_dev_", "manifest.json"),
+    path.join(__dirname, "dist", "_dev_", "manifest.json")
+  );
+
+  if (process.env.NODE_ENV === "development") {
+    fs.watch(
+      path.join(__dirname, "dist"),
+      { recursive: true, persistent: true, encoding: "utf-8" },
+      (event, name) => {
+        if (name.includes("_dev_")) return;
+
+        if (name.includes(".wasm") || name.includes(".jsurl")) {
+          fs.copyFile(
+            path.resolve(__dirname, "dist", name),
+            path.join(__dirname, "dist", "_dev_", name),
+            (a) => console.log(`Copied ${name}`)
+          );
+        }
+      }
+    );
+  }
+
   await buildSharedWorker();
 
   if (process.env.NODE_ENV === "development") {
     const service = await build({
       ...baseBuildConfig,
       entryPoints: [
-        path.join(__dirname, "src", "service-worker.ts"),
-        path.join(__dirname, "src", "pages/[code].tsx"),
-        path.join(__dirname, "src", "pages/index.tsx"),
+        path.join(__dirname, "src", "_dev_", "setup.tsx"),
+        path.join(__dirname, "src", "_dev_", "index.tsx"),
       ],
-      outdir: path.join(__dirname, "dist"),
-      metafile: "./meta.json",
+      metafile: true,
     });
+    builds.push(service);
+
+    await buildServiceWorker();
 
     const server = http.createServer((request, response) => {
       // You pass two more arguments for config and middleware
@@ -114,6 +147,7 @@ async function start() {
       return handler(request, response, {
         public: "./dist",
         directoryListing: true,
+
         headers: [
           {
             source: "**/*.jsurl",
@@ -137,15 +171,15 @@ async function start() {
     const builder = await build({
       ...baseBuildConfig,
       entryPoints: [
-        "./src/lib/worker.tsx",
-        "./src/service-worker.ts",
-        "./src/pages/[code].tsx",
-        "./src/pages/index.tsx",
+        "./src/_dev_/lib/worker.tsx",
+        "./src/_dev_/service-worker.ts",
+        "./src/_dev_/setup.tsx",
+        "./src/_dev_/index.tsx",
       ],
       outdir: path.join(__dirname, "dist"),
+      outbase: "src",
       bundle: true,
       platform: "browser",
-      publicPath: process.env.PUBLIC_PATH || "http://localhost:6000",
       sourcemap: "both",
     });
     console.log("Finished.", builder);

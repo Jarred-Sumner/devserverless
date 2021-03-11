@@ -1,6 +1,6 @@
 import * as serializer from "dom-serializer";
 import { DomHandler, DomUtils, parseDocument, Parser } from "htmlparser2";
-import IDLE_WORKER_URL from "src/lib/IdleWorker.jsurl";
+import IDLE_WORKER_URL from "src/_dev_/IdleWorker.jsurl";
 
 // function removeElement(node: Node) {
 //   DomUtils.removeElement(node);
@@ -12,34 +12,28 @@ export const IDLE_WORKER_CODE = `
       name: "IdleWorker",
     });
   }
+
+  if (globalThis.navigator.serviceWorker && !globalThis["REGISTERED_SERVICE_WORKER"]) {
+    globalThis
+      .navigator
+      .serviceWorker
+      .register("/_dev_/service-worker.js", {scope: '/'})
+      .then(function (registration) {})
+      .catch(function (err) {});
+    globalThis["REGISTERED_SERVICE_WORKER"] = true;
+  }
 `;
 
 export function generateHTML(packageName: string, source: string) {
-  const dom = parseDocument(source);
-  // for (let node of DomUtils.getElementsByTagName("script", dom, true)) {
-  //   node.tagName = "script-template";
-  // }
-  // const handler = new DomHandler((err, elems) => {
-  //   DomUtils.appendChild(
-  //     DomUtils.getElementsByTagName("body", dom, true)[0] ||
-  //       DomUtils.getElementsByTagName("html", dom, true)[0],
-  //     elems[0]
-  //   );
-  // });
-
-  const handler2 = new DomHandler((err, elems) => {
-    for (let elem of elems) {
-      DomUtils.prependChild(
-        DomUtils.getElementsByTagName("head", dom, true)[0] ||
-          DomUtils.getElementsByTagName("html", dom, true)[0],
-        elem
-      );
+  // service workers are not allowed
+  for (let linkTag of DomUtils.getElementsByTagName("link", dom)) {
+    if (linkTag.attribs["rel"] === "manifest") {
+      DomUtils.removeElement(linkTag);
     }
-  });
+  }
 
   var parser2 = new Parser(handler2);
-  parser2.write(`<base href="/local/${packageName}/"></base>`);
-  parser2.write(`<script>${IDLE_WORKER_CODE}</script>`);
+  parser2.write(`<script module>${IDLE_WORKER_CODE}</script>`);
   parser2.end();
 
   return serializer.default(dom, {});

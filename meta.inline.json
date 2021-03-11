@@ -1,0 +1,157 @@
+{
+  "inputs": {
+    "src/_dev_/IdleWorker.jsurl": {
+      "bytes": 560,
+      "imports": []
+    },
+    "src/lib/launchIdleWorker.ts": {
+      "bytes": 249,
+      "imports": [
+        {
+          "path": "src/_dev_/IdleWorker.jsurl",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
+      "bytes": 7495,
+      "imports": []
+    },
+    "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js": {
+      "bytes": 3163,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js": {
+      "bytes": 16166,
+      "imports": []
+    },
+    "node_modules/.pnpm/mime@2.5.2/node_modules/mime/Mime.js": {
+      "bytes": 2892,
+      "imports": []
+    },
+    "node_modules/.pnpm/mime@2.5.2/node_modules/mime/types/standard.js": {
+      "bytes": 9506,
+      "imports": []
+    },
+    "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js": {
+      "bytes": 101,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/Mime.js",
+          "kind": "require-call"
+        },
+        {
+          "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/types/standard.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "src/lib/Database.ts": {
+      "bytes": 4059,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "src/lib/requestPermission.tsx": {
+      "bytes": 290,
+      "imports": [
+        {
+          "path": "src/lib/Database.ts",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "src/_dev_/requestPermissionRunner.inlinejs": {
+      "bytes": 313,
+      "imports": [
+        {
+          "path": "src/lib/launchIdleWorker.ts",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/lib/requestPermission.tsx",
+          "kind": "import-statement"
+        }
+      ]
+    }
+  },
+  "outputs": {
+    "dist/IdleWorker.6LS4SO7S.jsurl": {
+      "imports": [],
+      "exports": [],
+      "inputs": {
+        "src/_dev_/IdleWorker.jsurl": {
+          "bytesInOutput": 560
+        }
+      },
+      "bytes": 560
+    },
+    "dist/_dev_/requestPermissionRunner.jsfile.map": {
+      "imports": [],
+      "exports": [],
+      "inputs": {},
+      "bytes": 64793
+    },
+    "dist/_dev_/requestPermissionRunner.jsfile": {
+      "imports": [],
+      "exports": [],
+      "entryPoint": "src/_dev_/requestPermissionRunner.inlinejs",
+      "inputs": {
+        "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js": {
+          "bytesInOutput": 9640
+        },
+        "node_modules/.pnpm/mime@2.5.2/node_modules/mime/Mime.js": {
+          "bytesInOutput": 1735
+        },
+        "node_modules/.pnpm/mime@2.5.2/node_modules/mime/types/standard.js": {
+          "bytesInOutput": 10279
+        },
+        "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js": {
+          "bytesInOutput": 153
+        },
+        "src/_dev_/IdleWorker.jsurl": {
+          "bytesInOutput": 61
+        },
+        "src/lib/launchIdleWorker.ts": {
+          "bytesInOutput": 174
+        },
+        "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
+          "bytesInOutput": 3976
+        },
+        "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js": {
+          "bytesInOutput": 1835
+        },
+        "src/lib/Database.ts": {
+          "bytesInOutput": 965
+        },
+        "src/lib/requestPermission.tsx": {
+          "bytesInOutput": 198
+        },
+        "src/_dev_/requestPermissionRunner.inlinejs": {
+          "bytesInOutput": 208
+        }
+      },
+      "bytes": 117301
+    }
+  }
+}

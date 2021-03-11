@@ -1,11 +1,12 @@
 import * as IDB from "idb";
 import { OutputParams, Method } from "src/lib/rpc";
+import WORKER_URL from "dist/_dev_/worker.jsurl";
 
 export class Packager {
   port: MessagePort;
 
   start() {
-    const worker = new SharedWorker(globalThis.WORKER_URL, { type: "module" });
+    const worker = new SharedWorker(WORKER_URL, { type: "module" });
     worker.port.addEventListener("message", this._onMessage);
     worker.port.addEventListener("error", (message) =>
       console.error(message.error)

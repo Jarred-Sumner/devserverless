@@ -1,54 +1,15 @@
 {
   "inputs": {
-    "dist/ServiceWorker.jsurl": {
-      "bytes": 1136937,
+    "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/lib/browser.js": {
+      "bytes": 70213,
       "imports": []
     },
-    "src/service-worker.ts": {
-      "bytes": 181,
-      "imports": [
-        {
-          "path": "dist/ServiceWorker.jsurl",
-          "kind": "import-statement"
-        }
-      ]
-    },
-    "src/lib/IdleWorker.jsurl": {
-      "bytes": 560,
+    "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm": {
+      "bytes": 8227523,
       "imports": []
     },
-    "src/lib/launchIdleWorker.ts": {
-      "bytes": 247,
-      "imports": [
-        {
-          "path": "src/lib/IdleWorker.jsurl",
-          "kind": "import-statement"
-        }
-      ]
-    },
-    "src/lib/injectServiceWorker.ts": {
-      "bytes": 320,
-      "imports": []
-    },
-    "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
-      "bytes": 7495,
-      "imports": []
-    },
-    "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js": {
-      "bytes": 3163,
-      "imports": [
-        {
-          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js",
-          "kind": "import-statement"
-        },
-        {
-          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js",
-          "kind": "import-statement"
-        }
-      ]
-    },
-    "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js": {
-      "bytes": 16166,
+    "src/lib/rpc.ts": {
+      "bytes": 511,
       "imports": []
     },
     "node_modules/.pnpm/mime@2.5.2/node_modules/mime/Mime.js": {
@@ -72,22 +33,9 @@
         }
       ]
     },
-    "src/lib/Database.ts": {
-      "bytes": 3975,
-      "imports": [
-        {
-          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js",
-          "kind": "import-statement"
-        },
-        {
-          "path": "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js",
-          "kind": "import-statement"
-        },
-        {
-          "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js",
-          "kind": "import-statement"
-        }
-      ]
+    "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js": {
+      "bytes": 16166,
+      "imports": []
     },
     "node_modules/.pnpm/semver@7.3.4/node_modules/semver/internal/constants.js": {
       "bytes": 468,
@@ -1116,8 +1064,12 @@
         }
       ]
     },
+    "src/_dev_/IdleWorker.jsurl": {
+      "bytes": 560,
+      "imports": []
+    },
     "src/htmlGenerator.ts": {
-      "bytes": 1471,
+      "bytes": 1685,
       "imports": [
         {
           "path": "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/index.js",
@@ -1128,7 +1080,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "src/lib/IdleWorker.jsurl",
+          "path": "src/_dev_/IdleWorker.jsurl",
           "kind": "import-statement"
         }
       ]
@@ -1142,7 +1094,7 @@
       "imports": []
     },
     "src/lib/ESBuildPackage.tsx": {
-      "bytes": 16795,
+      "bytes": 16671,
       "imports": [
         {
           "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js",
@@ -1170,130 +1122,175 @@
         }
       ]
     },
-    "src/lib/rpc.ts": {
-      "bytes": 511,
+    "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
+      "bytes": 7495,
       "imports": []
     },
-    "src/lib/Packager.ts": {
-      "bytes": 1137,
+    "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js": {
+      "bytes": 3163,
       "imports": [
         {
-          "path": "src/lib/rpc.ts",
+          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js",
           "kind": "import-statement"
         }
       ]
     },
-    "src/lib/InitialPackager.ts": {
-      "bytes": 308,
+    "src/lib/Database.ts": {
+      "bytes": 4059,
       "imports": [
+        {
+          "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "src/_dev_/worker.tsx": {
+      "bytes": 2850,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/lib/browser.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/lib/rpc.ts",
+          "kind": "import-statement"
+        },
         {
           "path": "src/lib/ESBuildPackage.tsx",
           "kind": "import-statement"
         },
         {
-          "path": "src/lib/Packager.ts",
+          "path": "src/lib/Database.ts",
           "kind": "import-statement"
         }
       ]
     },
-    "dist/lib/worker.jsurl": {
-      "bytes": 974582,
-      "imports": []
-    },
-    "src/pages/[code].tsx": {
-      "bytes": 1845,
+    "src/lib/BundleWorker.ts": {
+      "bytes": 5052,
       "imports": [
         {
-          "path": "src/lib/launchIdleWorker.ts",
+          "path": "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/lib/browser.js",
           "kind": "import-statement"
         },
         {
-          "path": "src/lib/injectServiceWorker.ts",
+          "path": "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/lib/rpc.ts",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/lib/ESBuildPackage.tsx",
           "kind": "import-statement"
         },
         {
           "path": "src/lib/Database.ts",
           "kind": "import-statement"
-        },
+        }
+      ]
+    },
+    "src/_dev_/ErrorPage.css": {
+      "bytes": 3959,
+      "imports": []
+    },
+    "dist/_dev_/requestPermissionRunner.jsfile": {
+      "bytes": 117301,
+      "imports": []
+    },
+    "src/_dev_/ErrorPage.tsx": {
+      "bytes": 7593,
+      "imports": [
         {
-          "path": "src/lib/InitialPackager.ts",
+          "path": "src/lib/ErrorCode.tsx",
           "kind": "import-statement"
         },
         {
-          "path": "dist/lib/worker.jsurl",
+          "path": "src/_dev_/ErrorPage.css",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/_dev_/requestPermissionRunner.jsfile",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/htmlGenerator.ts",
           "kind": "import-statement"
         }
       ]
     },
-    "src/pages/index.tsx": {
-      "bytes": 0,
-      "imports": []
+    "src/_dev_/ServiceWorker.ts": {
+      "bytes": 4642,
+      "imports": [
+        {
+          "path": "src/lib/BundleWorker.ts",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/lib/ErrorCode.tsx",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/lib/ESBuildPackage.tsx",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/_dev_/ErrorPage.tsx",
+          "kind": "import-statement"
+        }
+      ]
     }
   },
   "outputs": {
-    "dist/ServiceWorker.T6FB4E4R.jsurl": {
+    "dist/esbuild.U2WGCXOK.wasm": {
       "imports": [],
       "exports": [],
       "inputs": {
-        "dist/ServiceWorker.jsurl": {
-          "bytesInOutput": 1136937
+        "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm": {
+          "bytesInOutput": 8227523
         }
       },
-      "bytes": 1136937
-    },
-    "dist/service-worker.js.map": {
-      "imports": [],
-      "exports": [],
-      "inputs": {},
-      "bytes": 355
-    },
-    "dist/service-worker.js": {
-      "imports": [],
-      "exports": [],
-      "entryPoint": "src/service-worker.ts",
-      "inputs": {
-        "dist/ServiceWorker.jsurl": {
-          "bytesInOutput": 62
-        },
-        "src/service-worker.ts": {
-          "bytesInOutput": 75
-        }
-      },
-      "bytes": 718
+      "bytes": 8227523
     },
     "dist/IdleWorker.6LS4SO7S.jsurl": {
       "imports": [],
       "exports": [],
       "inputs": {
-        "src/lib/IdleWorker.jsurl": {
+        "src/_dev_/IdleWorker.jsurl": {
           "bytesInOutput": 560
         }
       },
       "bytes": 560
     },
-    "dist/worker.33J3DMBV.jsurl": {
-      "imports": [],
-      "exports": [],
-      "inputs": {
-        "dist/lib/worker.jsurl": {
-          "bytesInOutput": 974582
-        }
-      },
-      "bytes": 974582
-    },
-    "dist/pages/[code].js.map": {
+    "dist/_dev_/worker.jsurl.map": {
       "imports": [],
       "exports": [],
       "inputs": {},
-      "bytes": 398456
+      "bytes": 501874
     },
-    "dist/pages/[code].js": {
+    "dist/_dev_/worker.jsurl": {
       "imports": [],
       "exports": [],
-      "entryPoint": "src/pages/[code].tsx",
+      "entryPoint": "src/_dev_/worker.tsx",
       "inputs": {
-        "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js": {
-          "bytesInOutput": 9650
+        "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/lib/browser.js": {
+          "bytesInOutput": 68645
         },
         "node_modules/.pnpm/mime@2.5.2/node_modules/mime/Mime.js": {
           "bytesInOutput": 1735
@@ -1303,6 +1300,9 @@
         },
         "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js": {
           "bytesInOutput": 153
+        },
+        "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js": {
+          "bytesInOutput": 9650
         },
         "node_modules/.pnpm/semver@7.3.4/node_modules/semver/internal/constants.js": {
           "bytesInOutput": 332
@@ -1395,10 +1395,10 @@
           "bytesInOutput": 277
         },
         "node_modules/.pnpm/yallist@4.0.0/node_modules/yallist/yallist.js": {
-          "bytesInOutput": 7939
+          "bytesInOutput": 7971
         },
         "node_modules/.pnpm/lru-cache@6.0.0/node_modules/lru-cache/index.js": {
-          "bytesInOutput": 6747
+          "bytesInOutput": 6776
         },
         "node_modules/.pnpm/semver@7.3.4/node_modules/semver/classes/range.js": {
           "bytesInOutput": 8786
@@ -1515,19 +1515,34 @@
           "bytesInOutput": 972
         },
         "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/FeedHandler.js": {
-          "bytesInOutput": 8096
+          "bytesInOutput": 8104
         },
         "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/index.js": {
           "bytesInOutput": 3112
         },
-        "src/lib/IdleWorker.jsurl": {
-          "bytesInOutput": 56
+        "src/_dev_/worker.tsx": {
+          "bytesInOutput": 2184
         },
-        "src/lib/launchIdleWorker.ts": {
-          "bytesInOutput": 174
+        "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm": {
+          "bytesInOutput": 54
         },
-        "src/lib/injectServiceWorker.ts": {
-          "bytesInOutput": 279
+        "src/lib/rpc.ts": {
+          "bytesInOutput": 234
+        },
+        "src/lib/ESBuildPackage.tsx": {
+          "bytesInOutput": 12842
+        },
+        "src/htmlGenerator.ts": {
+          "bytesInOutput": 1515
+        },
+        "src/_dev_/IdleWorker.jsurl": {
+          "bytesInOutput": 61
+        },
+        "src/lib/ErrorCode.tsx": {
+          "bytesInOutput": 978
+        },
+        "src/lib/getCache.tsx": {
+          "bytesInOutput": 121
         },
         "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
           "bytesInOutput": 3976
@@ -1536,13 +1551,270 @@
           "bytesInOutput": 1835
         },
         "src/lib/Database.ts": {
-          "bytesInOutput": 965
+          "bytesInOutput": 967
+        }
+      },
+      "bytes": 975587
+    },
+    "dist/_dev_/ServiceWorker.jsurl.map": {
+      "imports": [],
+      "exports": [],
+      "inputs": {},
+      "bytes": 523663
+    },
+    "dist/_dev_/ServiceWorker.jsurl": {
+      "imports": [],
+      "exports": [],
+      "entryPoint": "src/_dev_/ServiceWorker.ts",
+      "inputs": {
+        "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/lib/browser.js": {
+          "bytesInOutput": 68694
+        },
+        "node_modules/.pnpm/mime@2.5.2/node_modules/mime/Mime.js": {
+          "bytesInOutput": 1735
+        },
+        "node_modules/.pnpm/mime@2.5.2/node_modules/mime/types/standard.js": {
+          "bytesInOutput": 10279
+        },
+        "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js": {
+          "bytesInOutput": 153
+        },
+        "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js": {
+          "bytesInOutput": 9640
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/internal/constants.js": {
+          "bytesInOutput": 332
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/internal/debug.js": {
+          "bytesInOutput": 275
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/internal/re.js": {
+          "bytesInOutput": 3990
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/internal/parse-options.js": {
+          "bytesInOutput": 327
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/internal/identifiers.js": {
+          "bytesInOutput": 434
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/classes/semver.js": {
+          "bytesInOutput": 5689
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/parse.js": {
+          "bytesInOutput": 588
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/valid.js": {
+          "bytesInOutput": 222
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/clean.js": {
+          "bytesInOutput": 251
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/inc.js": {
+          "bytesInOutput": 375
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/compare.js": {
+          "bytesInOutput": 200
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/eq.js": {
+          "bytesInOutput": 163
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/diff.js": {
+          "bytesInOutput": 593
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/major.js": {
+          "bytesInOutput": 167
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/minor.js": {
+          "bytesInOutput": 167
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/patch.js": {
+          "bytesInOutput": 167
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/prerelease.js": {
+          "bytesInOutput": 283
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/rcompare.js": {
+          "bytesInOutput": 175
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/compare-loose.js": {
+          "bytesInOutput": 178
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/compare-build.js": {
+          "bytesInOutput": 319
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/sort.js": {
+          "bytesInOutput": 200
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/rsort.js": {
+          "bytesInOutput": 203
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/gt.js": {
+          "bytesInOutput": 161
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/lt.js": {
+          "bytesInOutput": 161
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/neq.js": {
+          "bytesInOutput": 166
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/gte.js": {
+          "bytesInOutput": 165
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/lte.js": {
+          "bytesInOutput": 165
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/cmp.js": {
+          "bytesInOutput": 909
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/coerce.js": {
+          "bytesInOutput": 962
+        },
+        "node_modules/.pnpm/yallist@4.0.0/node_modules/yallist/iterator.js": {
+          "bytesInOutput": 277
+        },
+        "node_modules/.pnpm/yallist@4.0.0/node_modules/yallist/yallist.js": {
+          "bytesInOutput": 7964
+        },
+        "node_modules/.pnpm/lru-cache@6.0.0/node_modules/lru-cache/index.js": {
+          "bytesInOutput": 6776
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/classes/range.js": {
+          "bytesInOutput": 8786
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/classes/comparator.js": {
+          "bytesInOutput": 3111
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/functions/satisfies.js": {
+          "bytesInOutput": 296
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/to-comparators.js": {
+          "bytesInOutput": 267
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/max-satisfying.js": {
+          "bytesInOutput": 519
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/min-satisfying.js": {
+          "bytesInOutput": 518
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/min-version.js": {
+          "bytesInOutput": 1229
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/valid.js": {
+          "bytesInOutput": 268
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/outside.js": {
+          "bytesInOutput": 1541
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/gtr.js": {
+          "bytesInOutput": 189
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/ltr.js": {
+          "bytesInOutput": 189
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/intersects.js": {
+          "bytesInOutput": 238
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/simplify.js": {
+          "bytesInOutput": 912
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/ranges/subset.js": {
+          "bytesInOutput": 3044
+        },
+        "node_modules/.pnpm/semver@7.3.4/node_modules/semver/index.js": {
+          "bytesInOutput": 1573
+        },
+        "node_modules/.pnpm/domelementtype@2.1.0/node_modules/domelementtype/lib/index.js": {
+          "bytesInOutput": 690
+        },
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/entities.json": {
+          "bytesInOutput": 40084
+        },
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/legacy.json": {
+          "bytesInOutput": 1636
+        },
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/xml.json": {
+          "bytesInOutput": 133
+        },
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/maps/decode.json": {
+          "bytesInOutput": 381
+        },
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode_codepoint.js": {
+          "bytesInOutput": 912
+        },
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/decode.js": {
+          "bytesInOutput": 1963
+        },
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/encode.js": {
+          "bytesInOutput": 2947
+        },
+        "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/index.js": {
+          "bytesInOutput": 3008
+        },
+        "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/foreignNames.js": {
+          "bytesInOutput": 3848
+        },
+        "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/index.js": {
+          "bytesInOutput": 4872
+        },
+        "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Tokenizer.js": {
+          "bytesInOutput": 19312
+        },
+        "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Parser.js": {
+          "bytesInOutput": 9290
+        },
+        "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/node.js": {
+          "bytesInOutput": 8898
+        },
+        "node_modules/.pnpm/domhandler@4.0.0/node_modules/domhandler/lib/index.js": {
+          "bytesInOutput": 4591
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/tagtypes.js": {
+          "bytesInOutput": 793
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/stringify.js": {
+          "bytesInOutput": 1092
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/traversal.js": {
+          "bytesInOutput": 1715
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/manipulation.js": {
+          "bytesInOutput": 2428
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/querying.js": {
+          "bytesInOutput": 2278
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/legacy.js": {
+          "bytesInOutput": 2967
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/helpers.js": {
+          "bytesInOutput": 1988
+        },
+        "node_modules/.pnpm/domutils@2.4.4/node_modules/domutils/lib/index.js": {
+          "bytesInOutput": 972
+        },
+        "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/FeedHandler.js": {
+          "bytesInOutput": 8104
+        },
+        "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/index.js": {
+          "bytesInOutput": 3112
+        },
+        "src/lib/BundleWorker.ts": {
+          "bytesInOutput": 4132
+        },
+        "node_modules/.pnpm/esbuild-wasm@0.8.56/node_modules/esbuild-wasm/esbuild.wasm": {
+          "bytesInOutput": 54
+        },
+        "src/lib/rpc.ts": {
+          "bytesInOutput": 234
         },
         "src/lib/ESBuildPackage.tsx": {
-          "bytesInOutput": 12876
+          "bytesInOutput": 12859
         },
         "src/htmlGenerator.ts": {
-          "bytesInOutput": 954
+          "bytesInOutput": 1515
+        },
+        "src/_dev_/IdleWorker.jsurl": {
+          "bytesInOutput": 61
         },
         "src/lib/ErrorCode.tsx": {
           "bytesInOutput": 978
@@ -1550,36 +1822,29 @@
         "src/lib/getCache.tsx": {
           "bytesInOutput": 121
         },
-        "src/lib/rpc.ts": {
-          "bytesInOutput": 234
+        "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
+          "bytesInOutput": 3976
         },
-        "src/lib/Packager.ts": {
-          "bytesInOutput": 891
+        "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js": {
+          "bytesInOutput": 1835
         },
-        "src/lib/InitialPackager.ts": {
-          "bytesInOutput": 149
+        "src/lib/Database.ts": {
+          "bytesInOutput": 967
         },
-        "dist/lib/worker.jsurl": {
-          "bytesInOutput": 48
+        "src/_dev_/ErrorPage.css": {
+          "bytesInOutput": 3987
         },
-        "src/pages/[code].tsx": {
-          "bytesInOutput": 1205
+        "dist/_dev_/requestPermissionRunner.jsfile": {
+          "bytesInOutput": 117350
+        },
+        "src/_dev_/ErrorPage.tsx": {
+          "bytesInOutput": 6290
+        },
+        "src/_dev_/ServiceWorker.ts": {
+          "bytesInOutput": 3532
         }
       },
-      "bytes": 768885
-    },
-    "dist/pages/index.js.map": {
-      "imports": [],
-      "exports": [],
-      "inputs": {},
-      "bytes": 93
-    },
-    "dist/pages/index.js": {
-      "imports": [],
-      "exports": [],
-      "entryPoint": "src/pages/index.tsx",
-      "inputs": {},
-      "bytes": 175
+      "bytes": 1137924
     }
   }
 }

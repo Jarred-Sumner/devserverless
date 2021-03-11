@@ -13,4 +13,8 @@ export enum ErrorCode {
   fileNotFound,
   fileAccessDenied,
   buildFailed,
+  invalidTSConfig,
+  routeNotFound,
+  needsConfig,
+  failedToResolveNPMPackage,
 }

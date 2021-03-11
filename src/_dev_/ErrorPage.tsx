@@ -4,10 +4,10 @@ import type {
   PackagerPermissionError,
 } from "src/lib/ESBuildPackage";
 import { ErrorCode } from "src/lib/ErrorCode";
-import CSS_FILE from "./ErrorPage.css";
-import REQUEST_PERMISSION_ERROR from "dist/requestPermissionRunner.jsfile";
-import { BuildFailure, Location, Message, Note } from "esbuild";
+import REQUEST_PERMISSION_ERROR from "dist/_dev_/requestPermissionRunner.jsfile";
+import type { BuildFailure, Location, Message, Note } from "esbuild";
 import { IDLE_WORKER_CODE } from "src/htmlGenerator";
+import { getPackageID } from "src/_dev_/getPackageID";
 
 const MESSAGE = {
   [ErrorCode.invalidPackageJSON]: "package.json invalid or missing?",
@@ -26,7 +26,7 @@ const MESSAGE = {
 };
 
 function renderLocation(location: Location, relative: string = "/") {
-  return `<div class="__DevServer__Error-location"><span class="strong">${relative}${location.file}</span>:${location.line}:${location.column}</div>`;
+  return `<div class="__DevServer__Error-location"><span class="strong">${location.file}</span>:${location.line}:${location.column}</div>`;
 }
 
 function renderESBuildNote(note: Note) {
@@ -100,7 +100,9 @@ async function renderESBuildError(
     if (build) {
       try {
         let file = await build.getFileForLocation(error.location);
-        lines = (await file.text()).split("\n");
+        if (file) {
+          lines = (await file.text()).split("\n");
+        }
       } catch (exception) {
         console.error(exception);
       }
@@ -213,7 +215,7 @@ export async function buildError(error: PackagerError) {
           </div>
 
           <div>
-          ${error.build?.id}
+          ${getPackageID()}
           </div>
         </div>
       </div>
@@ -224,7 +226,7 @@ export async function buildError(error: PackagerError) {
       return `<div class="__DevServer__ErrorPage">
         <div class="__DevServer__ErrorPage-modal">
         <div class="__DevServer__ErrorPage-heading">
-          ${MESSAGE[error.code] || ErrorCode[error.code]}
+          ${MESSAGE[error.code] || ErrorCode[error.code]} (${error.code})
         </div>
         <div class="__DevServer__ErrorPage-title">${error.name}</div>
 
@@ -236,15 +238,20 @@ export async function buildError(error: PackagerError) {
 }
 
 export async function renderPackagerError(error) {
-  return `<!DOCTYPE html><html><head><script>${IDLE_WORKER_CODE}</script><style>${CSS_FILE}</style></head><body>${await buildError(
-    error
-  )}</body></html>`;
+  try {
+    return `<!DOCTYPE html><html><head><script module>${IDLE_WORKER_CODE}</script><link href="/_dev_/ServiceWorker.css" rel="stylesheet" /></head><body>${await buildError(
+      error
+    )}</body></html>`;
+  } catch (exception) {
+    console.error("Error building the error page...lol", exception);
+    return `${error.name} - ${error.message}`;
+  }
 }
 
 export async function injectRenderPackagerError(error) {
   return [
-    `<script module>${IDLE_WORKER_CODE}</script`,
-    `<style>${CSS_FILE}</style>`,
+    `<script type="module" module>${IDLE_WORKER_CODE}</script`,
+    `<link href="/_dev_/ServiceWorker.css" rel="stylesheet" />`,
     await buildError(error),
   ];
 }

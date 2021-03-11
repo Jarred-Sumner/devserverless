@@ -1,9 +1,0 @@
-import "src/lib/launchIdleWorker.ts";
-import { requestPermission } from "./requestPermission";
-
-window.addEventListener("DOMContentLoaded", () => {
-  document.querySelector("#button").addEventListener("click", async () => {
-    await requestPermission(globalThis.HANDLE_ID);
-    location.reload();
-  });
-});

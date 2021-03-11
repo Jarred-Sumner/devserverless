@@ -1,34 +1,99 @@
 {
   "inputs": {
-    "dist/ServiceWorker.jsurl": {
-      "bytes": 1136937,
-      "imports": []
-    },
-    "src/service-worker.ts": {
-      "bytes": 181,
-      "imports": [
-        {
-          "path": "dist/ServiceWorker.jsurl",
-          "kind": "import-statement"
-        }
-      ]
-    },
-    "src/lib/IdleWorker.jsurl": {
+    "src/_dev_/IdleWorker.jsurl": {
       "bytes": 560,
       "imports": []
     },
     "src/lib/launchIdleWorker.ts": {
-      "bytes": 247,
+      "bytes": 249,
       "imports": [
         {
-          "path": "src/lib/IdleWorker.jsurl",
+          "path": "src/_dev_/IdleWorker.jsurl",
           "kind": "import-statement"
         }
       ]
     },
     "src/lib/injectServiceWorker.ts": {
-      "bytes": 320,
+      "bytes": 342,
       "imports": []
+    },
+    "node_modules/.pnpm/object-assign@4.1.1/node_modules/object-assign/index.js": {
+      "bytes": 2108,
+      "imports": []
+    },
+    "node_modules/.pnpm/react@17.0.1/node_modules/react/cjs/react.development.js": {
+      "bytes": 72141,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/object-assign@4.1.1/node_modules/object-assign/index.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/react@17.0.1/node_modules/react/index.js": {
+      "bytes": 190,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/react@17.0.1/node_modules/react/cjs/react.development.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/cjs/scheduler.development.js": {
+      "bytes": 23159,
+      "imports": []
+    },
+    "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/index.js": {
+      "bytes": 198,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/cjs/scheduler.development.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/cjs/scheduler-tracing.development.js": {
+      "bytes": 9001,
+      "imports": []
+    },
+    "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/tracing.js": {
+      "bytes": 214,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/cjs/scheduler-tracing.development.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/react-dom@17.0.1_react@17.0.1/node_modules/react-dom/cjs/react-dom.development.js": {
+      "bytes": 894563,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/react@17.0.1/node_modules/react/index.js",
+          "kind": "require-call"
+        },
+        {
+          "path": "node_modules/.pnpm/object-assign@4.1.1/node_modules/object-assign/index.js",
+          "kind": "require-call"
+        },
+        {
+          "path": "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/index.js",
+          "kind": "require-call"
+        },
+        {
+          "path": "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/tracing.js",
+          "kind": "require-call"
+        }
+      ]
+    },
+    "node_modules/.pnpm/react-dom@17.0.1_react@17.0.1/node_modules/react-dom/index.js": {
+      "bytes": 1363,
+      "imports": [
+        {
+          "path": "node_modules/.pnpm/react-dom@17.0.1_react@17.0.1/node_modules/react-dom/cjs/react-dom.development.js",
+          "kind": "require-call"
+        }
+      ]
     },
     "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
       "bytes": 7495,
@@ -73,7 +138,7 @@
       ]
     },
     "src/lib/Database.ts": {
-      "bytes": 3975,
+      "bytes": 4059,
       "imports": [
         {
           "path": "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/index.js",
@@ -1117,7 +1182,7 @@
       ]
     },
     "src/htmlGenerator.ts": {
-      "bytes": 1471,
+      "bytes": 1685,
       "imports": [
         {
           "path": "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/index.js",
@@ -1128,7 +1193,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "src/lib/IdleWorker.jsurl",
+          "path": "src/_dev_/IdleWorker.jsurl",
           "kind": "import-statement"
         }
       ]
@@ -1142,7 +1207,7 @@
       "imports": []
     },
     "src/lib/ESBuildPackage.tsx": {
-      "bytes": 16795,
+      "bytes": 16671,
       "imports": [
         {
           "path": "node_modules/.pnpm/mime@2.5.2/node_modules/mime/lite.js",
@@ -1174,11 +1239,19 @@
       "bytes": 511,
       "imports": []
     },
+    "dist/_dev_/worker.jsurl": {
+      "bytes": 975587,
+      "imports": []
+    },
     "src/lib/Packager.ts": {
-      "bytes": 1137,
+      "bytes": 1176,
       "imports": [
         {
           "path": "src/lib/rpc.ts",
+          "kind": "import-statement"
+        },
+        {
+          "path": "dist/_dev_/worker.jsurl",
           "kind": "import-statement"
         }
       ]
@@ -1196,12 +1269,21 @@
         }
       ]
     },
-    "dist/lib/worker.jsurl": {
-      "bytes": 974582,
+    "src/_dev_/shared.css": {
+      "bytes": 1270,
       "imports": []
     },
-    "src/pages/[code].tsx": {
-      "bytes": 1845,
+    "src/_dev_/NewProjectPage.css": {
+      "bytes": 2238,
+      "imports": [
+        {
+          "path": "src/_dev_/shared.css",
+          "kind": "import-rule"
+        }
+      ]
+    },
+    "src/_dev_/NewProjectPage.tsx": {
+      "bytes": 11290,
       "imports": [
         {
           "path": "src/lib/launchIdleWorker.ts",
@@ -1209,6 +1291,14 @@
         },
         {
           "path": "src/lib/injectServiceWorker.ts",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/react@17.0.1/node_modules/react/index.js",
+          "kind": "import-statement"
+        },
+        {
+          "path": "node_modules/.pnpm/react-dom@17.0.1_react@17.0.1/node_modules/react-dom/index.js",
           "kind": "import-statement"
         },
         {
@@ -1220,80 +1310,94 @@
           "kind": "import-statement"
         },
         {
-          "path": "dist/lib/worker.jsurl",
+          "path": "src/_dev_/NewProjectPage.css",
           "kind": "import-statement"
         }
       ]
     },
-    "src/pages/index.tsx": {
+    "src/_dev_/setup.tsx": {
+      "bytes": 178,
+      "imports": [
+        {
+          "path": "src/lib/launchIdleWorker.ts",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/lib/injectServiceWorker.ts",
+          "kind": "import-statement"
+        },
+        {
+          "path": "src/_dev_/NewProjectPage.tsx",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "src/_dev_/index.tsx": {
       "bytes": 0,
       "imports": []
     }
   },
   "outputs": {
-    "dist/ServiceWorker.T6FB4E4R.jsurl": {
-      "imports": [],
-      "exports": [],
-      "inputs": {
-        "dist/ServiceWorker.jsurl": {
-          "bytesInOutput": 1136937
-        }
-      },
-      "bytes": 1136937
-    },
-    "dist/service-worker.js.map": {
-      "imports": [],
-      "exports": [],
-      "inputs": {},
-      "bytes": 355
-    },
-    "dist/service-worker.js": {
-      "imports": [],
-      "exports": [],
-      "entryPoint": "src/service-worker.ts",
-      "inputs": {
-        "dist/ServiceWorker.jsurl": {
-          "bytesInOutput": 62
-        },
-        "src/service-worker.ts": {
-          "bytesInOutput": 75
-        }
-      },
-      "bytes": 718
-    },
     "dist/IdleWorker.6LS4SO7S.jsurl": {
       "imports": [],
       "exports": [],
       "inputs": {
-        "src/lib/IdleWorker.jsurl": {
+        "src/_dev_/IdleWorker.jsurl": {
           "bytesInOutput": 560
         }
       },
       "bytes": 560
     },
-    "dist/worker.33J3DMBV.jsurl": {
+    "dist/worker.2QRQEH6B.jsurl": {
       "imports": [],
       "exports": [],
       "inputs": {
-        "dist/lib/worker.jsurl": {
-          "bytesInOutput": 974582
+        "dist/_dev_/worker.jsurl": {
+          "bytesInOutput": 975587
         }
       },
-      "bytes": 974582
+      "bytes": 975587
     },
-    "dist/pages/[code].js.map": {
+    "dist/_dev_/setup.js.map": {
       "imports": [],
       "exports": [],
       "inputs": {},
-      "bytes": 398456
+      "bytes": 1743676
     },
-    "dist/pages/[code].js": {
+    "dist/_dev_/setup.js": {
       "imports": [],
       "exports": [],
-      "entryPoint": "src/pages/[code].tsx",
+      "entryPoint": "src/_dev_/setup.tsx",
       "inputs": {
+        "node_modules/.pnpm/object-assign@4.1.1/node_modules/object-assign/index.js": {
+          "bytesInOutput": 1762
+        },
+        "node_modules/.pnpm/react@17.0.1/node_modules/react/cjs/react.development.js": {
+          "bytesInOutput": 50768
+        },
+        "node_modules/.pnpm/react@17.0.1/node_modules/react/index.js": {
+          "bytesInOutput": 122
+        },
+        "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/cjs/scheduler.development.js": {
+          "bytesInOutput": 18161
+        },
+        "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/index.js": {
+          "bytesInOutput": 130
+        },
+        "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/cjs/scheduler-tracing.development.js": {
+          "bytesInOutput": 7519
+        },
+        "node_modules/.pnpm/scheduler@0.20.1/node_modules/scheduler/tracing.js": {
+          "bytesInOutput": 136
+        },
+        "node_modules/.pnpm/react-dom@17.0.1_react@17.0.1/node_modules/react-dom/cjs/react-dom.development.js": {
+          "bytesInOutput": 622340
+        },
+        "node_modules/.pnpm/react-dom@17.0.1_react@17.0.1/node_modules/react-dom/index.js": {
+          "bytesInOutput": 130
+        },
         "node_modules/.pnpm/path-browserify@1.0.1/node_modules/path-browserify/index.js": {
-          "bytesInOutput": 9650
+          "bytesInOutput": 9640
         },
         "node_modules/.pnpm/mime@2.5.2/node_modules/mime/Mime.js": {
           "bytesInOutput": 1735
@@ -1395,7 +1499,7 @@
           "bytesInOutput": 277
         },
         "node_modules/.pnpm/yallist@4.0.0/node_modules/yallist/yallist.js": {
-          "bytesInOutput": 7939
+          "bytesInOutput": 7932
         },
         "node_modules/.pnpm/lru-cache@6.0.0/node_modules/lru-cache/index.js": {
           "bytesInOutput": 6747
@@ -1467,7 +1571,7 @@
           "bytesInOutput": 1963
         },
         "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/encode.js": {
-          "bytesInOutput": 2954
+          "bytesInOutput": 2947
         },
         "node_modules/.pnpm/entities@2.2.0/node_modules/entities/lib/index.js": {
           "bytesInOutput": 3008
@@ -1476,10 +1580,10 @@
           "bytesInOutput": 3848
         },
         "node_modules/.pnpm/dom-serializer@1.2.0/node_modules/dom-serializer/lib/index.js": {
-          "bytesInOutput": 4872
+          "bytesInOutput": 4876
         },
         "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Tokenizer.js": {
-          "bytesInOutput": 19315
+          "bytesInOutput": 19312
         },
         "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/Parser.js": {
           "bytesInOutput": 9290
@@ -1520,14 +1624,17 @@
         "node_modules/.pnpm/htmlparser2@6.0.1/node_modules/htmlparser2/lib/index.js": {
           "bytesInOutput": 3112
         },
-        "src/lib/IdleWorker.jsurl": {
-          "bytesInOutput": 56
+        "src/_dev_/IdleWorker.jsurl": {
+          "bytesInOutput": 61
         },
         "src/lib/launchIdleWorker.ts": {
           "bytesInOutput": 174
         },
         "src/lib/injectServiceWorker.ts": {
-          "bytesInOutput": 279
+          "bytesInOutput": 299
+        },
+        "src/_dev_/NewProjectPage.tsx": {
+          "bytesInOutput": 11592
         },
         "node_modules/.pnpm/idb@6.0.0/node_modules/idb/build/esm/wrap-idb-value.js": {
           "bytesInOutput": 3976
@@ -1539,10 +1646,10 @@
           "bytesInOutput": 965
         },
         "src/lib/ESBuildPackage.tsx": {
-          "bytesInOutput": 12876
+          "bytesInOutput": 12884
         },
         "src/htmlGenerator.ts": {
-          "bytesInOutput": 954
+          "bytesInOutput": 1515
         },
         "src/lib/ErrorCode.tsx": {
           "bytesInOutput": 978
@@ -1553,31 +1660,46 @@
         "src/lib/rpc.ts": {
           "bytesInOutput": 234
         },
+        "dist/_dev_/worker.jsurl": {
+          "bytesInOutput": 53
+        },
         "src/lib/Packager.ts": {
-          "bytesInOutput": 891
+          "bytesInOutput": 884
         },
         "src/lib/InitialPackager.ts": {
           "bytesInOutput": 149
         },
-        "dist/lib/worker.jsurl": {
-          "bytesInOutput": 48
+        "src/_dev_/NewProjectPage.css": {
+          "bytesInOutput": 0
         },
-        "src/pages/[code].tsx": {
-          "bytesInOutput": 1205
+        "src/_dev_/setup.tsx": {
+          "bytesInOutput": 54
         }
       },
-      "bytes": 768885
+      "bytes": 3275411
     },
-    "dist/pages/index.js.map": {
+    "dist/_dev_/setup.css": {
+      "imports": [],
+      "inputs": {
+        "src/_dev_/shared.css": {
+          "bytesInOutput": 1307
+        },
+        "src/_dev_/NewProjectPage.css": {
+          "bytesInOutput": 2167
+        }
+      },
+      "bytes": 3537
+    },
+    "dist/_dev_/index.js.map": {
       "imports": [],
       "exports": [],
       "inputs": {},
       "bytes": 93
     },
-    "dist/pages/index.js": {
+    "dist/_dev_/index.js": {
       "imports": [],
       "exports": [],
-      "entryPoint": "src/pages/index.tsx",
+      "entryPoint": "src/_dev_/index.tsx",
       "inputs": {},
       "bytes": 175
     }

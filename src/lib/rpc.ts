@@ -1,6 +1,4 @@
-import { BuildResult, Message } from "esbuild";
-import { BuildOptions } from "esbuild-wasm";
-import { ESBuildPackage } from "src/lib/ESBuildPackage";
+import type { Message } from "esbuild";
 export enum Method {
   bundle,
   output,
@@ -21,6 +19,5 @@ export type BundleByIDParams = {
 export type OutputParams = {
   warnings: Message[];
   entryPoints: string[];
-  staticFiles: string[];
-  pages: Map<string, string>;
+  html: string;
 };

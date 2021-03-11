@@ -1,0 +1,216 @@
+@import "./shared.css";
+@import "docs/PackageJSONEditor.css";
+
+.Title {
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.TitleContainer {
+  display: grid;
+  grid-template-columns: 48px auto;
+  grid-column-gap: 32px;
+  align-items: center;
+}
+
+.TitleContainer,
+.Footer {
+  padding: var(--y-padding) var(--x-padding);
+}
+.StatusLight {
+  width: 48px;
+  height: 48px;
+  display: block;
+  aspect-ratio: 1;
+
+  content: "";
+  --background: transparent;
+  --border: transparent;
+  border-radius: 50%;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+}
+
+.StatusLight--unknown {
+  --background: rgb(78, 2, 255);
+  --border: rgb(64, 2, 209);
+}
+
+.NewProjectPage {
+  background: rgb(32, 32, 44);
+  border-radius: 4px;
+  filter: drop-shadow(1px 1px 3px rgb(48, 48, 68));
+  color: white;
+  min-width: auto;
+  max-width: 800px;
+  width: 100%;
+  grid-auto-flow: row;
+  margin: 48px auto;
+}
+
+.Monospace {
+  font-family: var(--monospace);
+}
+
+.HelpText {
+  line-height: 1.4;
+}
+
+.Dropbox + .HelpText {
+  padding: var(--y-padding-half) var(--x-padding);
+  margin-bottom: var(--y-padding-half);
+}
+
+.Dropbox {
+  padding: 72px 48px;
+  margin-left: var(--x-padding);
+  margin-right: var(--x-padding);
+
+  font-size: 1.5rem;
+  font-family: var(--monospace);
+  position: relative;
+  margin-bottom: var(--y-padding-half);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.HelpText {
+}
+
+.Routing-explanation {
+  padding: var(--y-padding) var(--x-padding);
+}
+
+.EntryPointList {
+  margin-top: var(--y-padding-half);
+  display: grid;
+  grid-auto-flow: row;
+
+  align-items: center;
+}
+.Dropbox-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.Dropbox-background rect {
+  stroke: rgb(64, 2, 209);
+  stroke-width: 4px;
+
+  stroke-dasharray: 10 2;
+  fill: rgb(0, 0, 0);
+  transition: all 0.1s linear;
+}
+
+.Dropbox.DragState--drag .Dropbox-background rect,
+.Dropbox:hover .Dropbox-background rect {
+  stroke-width: 4px;
+  fill: rgb(30, 0, 99);
+}
+
+.Dropbox.DragState--drop .Dropbox-background rect,
+.Dropbox:active .Dropbox-background rect {
+  stroke-width: 8px;
+  fill: rgb(50, 0, 167);
+}
+
+.Footer {
+  display: flex;
+  justify-content: space-between;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-weight: 500;
+  color: rgb(220, 220, 220);
+  font-size: 0.8rem;
+}
+
+.Section-label {
+  font-size: 1.2rem;
+  padding: 0 var(--x-padding);
+  text-transform: uppercase;
+
+  font-weight: 500;
+}
+
+.Section-label--level-2 {
+  font-size: 1rem;
+}
+
+.Section-label--level-2 {
+  margin-top: var(--y-padding-half);
+}
+
+.Section-label svg {
+  margin-right: 0.25rem;
+}
+
+.Section-label--url {
+  text-transform: lowercase;
+  color: white;
+  text-decoration: none;
+  font-size: 1.25rem;
+
+  color: white;
+}
+
+.Section-label--url-indicator {
+  text-decoration: underline;
+}
+
+.EntryPoint {
+  display: grid;
+  font-family: var(--monospace);
+  align-items: center;
+  padding-left: var(--x-padding);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-right: var(--x-padding);
+  border-top: 1px solid rgb(48, 48, 48);
+}
+
+.EntryPoint:last-of-type {
+  border-bottom: 1px solid rgb(48, 48, 48);
+}
+
+.EntryPoint--withIcon {
+  grid-template-columns: 24px auto;
+  grid-gap: 8px;
+}
+
+.EntryPoint--withError {
+  grid-template-columns: auto min-content;
+  grid-gap: 8px;
+}
+
+.EntryPoint--withError.EntryPoint--withIcon {
+  grid-template-columns: 24px auto min-content;
+  grid-gap: 8px;
+}
+
+.EntryPoint-error {
+  color: red;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.Lowercase {
+  margin-left: 0.5rem;
+  text-transform: lowercase;
+  font-weight: 300;
+  font-size: 0.8rem;
+  color: rgb(100, 100, 100);
+}
