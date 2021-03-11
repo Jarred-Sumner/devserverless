@@ -1,6 +1,3 @@
-dist
-/dist
-dist/**/*.jsfile
-dist/**/*.jsurl
 **/*.DS_Store
 node_modules
+.vercel

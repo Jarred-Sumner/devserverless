@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/_dev_/service-worker.ts"],
+  "sourcesContent": ["import _SERVICE_WORKER_URL from \"dist/_dev_/ServiceWorker.jsurl\";\nimport PRELOAD_MANIFEST from \"preload-manifest\";\n\nconst SERVICE_WORKER_URL = _SERVICE_WORKER_URL.replace(\"./\", \"/\");\n\nglobalThis.PRELOAD_MANIFEST = [\n  ...new Set([\n    ...PRELOAD_MANIFEST,\n    \"/_dev_/index.html\",\n    \"/_dev_/setup.html\",\n    SERVICE_WORKER_URL,\n  ]),\n];\n\nimportScripts(SERVICE_WORKER_URL);\n"],
+  "mappings": ";;;;;;;;;;;AAGA,IAAM,qBAAqB,sBAAoB,QAAQ,MAAM;AAE7D,WAAW,mBAAmB;AAAA,EAC5B,GAAG,IAAI,IAAI;AAAA,IACT,GAAG;AAAA,IACH;AAAA,IACA;AAAA,IACA;AAAA;AAAA;AAIJ,cAAc;",
+  "names": []
+}
