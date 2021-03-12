@@ -191,6 +191,12 @@
   grid-gap: 8px;
 }
 
+.EntryPoint-label {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
 .EntryPoint--withError {
   grid-template-columns: auto min-content;
   grid-gap: 8px;

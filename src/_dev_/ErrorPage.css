@@ -41,6 +41,7 @@
   display: grid;
   grid-template-columns: min-content auto;
   grid-auto-flow: row;
+  overflow-x: auto;
 }
 
 .__DevServer__ErrorPage-subtitle,

@@ -22,6 +22,27 @@ import { DomUtils, Parser } from "htmlparser2";
 import { bootstrap } from "src/lib/bootstrapper";
 import { Text } from "domhandler/lib/node";
 
+function getModuleName(path: string) {
+  if (path[0] === "@") {
+    const namespacedName = path.indexOf("/") + 1;
+
+    let end = path.indexOf("/", namespacedName);
+
+    if (end === -1) {
+      return path;
+    }
+
+    return path.substring(0, end);
+  } else {
+    const end = path.indexOf("/");
+    if (end > -1) {
+      return path.substring(0, end);
+    } else {
+      return path;
+    }
+  }
+}
+
 const DEFAULT_LOADERS = {
   ".jsx": "jsx",
   ".js": "jsx",
@@ -31,6 +52,21 @@ const DEFAULT_LOADERS = {
   ".cjs": "js",
   ".css": "css",
 };
+
+// const CSS_LOADERS = {
+
+// }
+
+const DEFAULT_NAMESPACES = {
+  ".svg": "local-binary",
+  ".png": "local-url",
+  ".jpg": "local-url",
+  ".jpeg": "local-url",
+  ".tiff": "local-url",
+  ".bmp": "local-url",
+  ".pdf": "local-url",
+};
+
 const host = "cdn.skypack.dev";
 const TRY_TO_USE_NODE_MODULES = false;
 
@@ -212,13 +248,13 @@ export class ESBuildPackage {
       tsconfig,
       metafile: true,
       entryPoints,
-      publicPath: ESBuildPackage.origin + this.relativePath,
+      publicPath: location.origin,
       plugins: [this.asPlugin()],
       write: false,
       splitting: true,
       define: {
         ...this.pkg.esbuild.define,
-        "process.env.NODE_ENV": '"development"',
+        "process.env.NODE_ENV": '"production"',
       },
       loader: this.pkg.esbuild.loader
         ? this.pkg.esbuild.loader
@@ -226,6 +262,15 @@ export class ESBuildPackage {
             ".js": "jsx",
             ".ts": "tsx",
             ".tsx": "tsx",
+            ".svg": "file",
+            ".png": "file",
+            ".gif": "file",
+            ".webp": "file",
+            ".jpg": "file",
+            ".jpeg": "file",
+            ".tiff": "file",
+            ".bmp": "file",
+            ".pdf": "file",
           },
       absWorkingDir: this.relativePath,
       nodePaths: ["/node_modules"],
@@ -283,21 +328,39 @@ export class ESBuildPackage {
   }
 
   resolveFile = async (opts: OnResolveArgs): Promise<OnResolveResult> => {
-    verbose("[Resolve]", opts);
+    const moduleName = getModuleName(opts.path);
 
-    const components = opts.path.split("/");
-    const pkgName = components[0];
+    const isHTTP =
+      opts.path.startsWith("https://") || opts.path.startsWith("http://");
 
     const ext = path.extname(opts.path);
+    if (opts.path.startsWith("data:")) {
+      return {
+        path: opts.path,
+        external: true,
+        // external,
+        // namespace: external ? undefined : "remote",
 
-    if (this.pkg.allDependencies.has(pkgName)) {
-      let file =
-        components.length > 1 ? `/${components.slice(1).join("/")}` : "";
+        // namespace: "esbuild-pkg",
+      };
+    }
 
+    if (opts.kind === "import-rule" && isHTTP) {
+      return {
+        path: opts.path,
+        external: true,
+        // external,
+        // namespace: external ? undefined : "remote",
+
+        // namespace: "esbuild-pkg",
+      };
+    } else if (this.pkg.allDependencies.has(moduleName)) {
       const external =
         !ext || ext === "tsx" || ext === "jsx" || ext === "js" || ext === "ts";
       return {
-        path: `https://${host}/${this.pkg.allDependencies.get(pkgName)}${file}`,
+        path: `https://${host}/${this.pkg.allDependencies.get(
+          moduleName
+        )}${opts.path.substring(moduleName.length)}`,
         // namespace: "remote",
         external,
         namespace: external ? undefined : "remote",
@@ -306,7 +369,7 @@ export class ESBuildPackage {
       };
     } else if (opts.namespace === "remote") {
       return {
-        path: `https://${host}${opts.path}`,
+        path: `https://${host}${opts.path}?min`,
         namespace: "remote",
         // external,
         // namespace: external ? undefined : "remote",
@@ -332,6 +395,7 @@ export class ESBuildPackage {
           return {
             path: resolvedPath,
             external: false,
+            // loader:
           };
         }
       }
@@ -350,6 +414,7 @@ export class ESBuildPackage {
     return {
       path: resolvedPath,
       external: false,
+      // loader:
     };
   };
 
@@ -398,8 +463,18 @@ export class ESBuildPackage {
     }
   };
 
+  loadBinaryFile = async (opts: OnLoadArgs): Promise<OnLoadResult> => {};
+
   loadFile = async (opts: OnLoadArgs): Promise<OnLoadResult> => {
     verbose("[Load]", opts);
+    if (opts.path.startsWith("data:")) {
+      return {
+        contents: opts.path,
+
+        // resolveDir: path.dirname(opts.path),
+        loader: "base64",
+      };
+    }
 
     // Use static folder for files
     if (

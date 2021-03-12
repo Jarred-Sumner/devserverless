@@ -7,6 +7,21 @@ ${IDLE_WORKER_CODE}
 
 async function start() {
   try {
+    const process = {
+      env: {
+        NODE_ENV: "development"
+      }
+    };
+
+    globalThis.process = new Proxy(process, {
+      enumerate: function (oTarget, sKey) {
+        return [];
+      },
+      ownKeys: function (oTarget, sKey) {
+        return [];
+      },
+    });
+
     const _exports = await import("${sourceUrl}");
     Object.assign(globalThis, _exports);
   } catch(exception) {

@@ -19,6 +19,10 @@ function onIsReady(status: ErrorCode | -1) {
       location.pathname = "/";
       break;
     }
+    case ErrorCode.requirePermission: {
+      location.reload();
+      break;
+    }
     case undefined:
     case ErrorCode.needsSetup: {
       location.pathname = "/_dev_/setup";

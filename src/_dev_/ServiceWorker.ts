@@ -125,7 +125,10 @@ async function processURL(event: FetchEvent) {
       }
 
       const response = await fetch(event.request);
-      await offlineCache.put(event.request, response.clone());
+      if (response.status === 200) {
+        await offlineCache.put(event.request, response.clone());
+      }
+
       return response;
     } else if (url.origin.startsWith("http")) {
       const [response, _offlineCache] = await Promise.all([
@@ -134,7 +137,13 @@ async function processURL(event: FetchEvent) {
       ]);
 
       offlineCache = _offlineCache;
-      await offlineCache.put(event.request, response.clone());
+      if (
+        response.status === 200 &&
+        (!response.headers.has("Cache-Control") ||
+          !response.headers.get("Cache-Control").includes("private"))
+      ) {
+        await offlineCache.put(event.request, response.clone());
+      }
       return response;
     } else {
       return await fetch(event.request);

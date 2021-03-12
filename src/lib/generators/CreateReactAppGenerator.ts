@@ -83,13 +83,15 @@ export class CreateReactAppGenerator {
         if (attribs["href"]) {
           attribs["href"] = attribs["href"]
             .replace("%PUBLIC_URL%", "/")
-            .replace(/\/+/gm, "/");
+            .replace(/^\/\//, "/")
+            .replace(/([^:]\/)\/+/g, "$1");
         }
 
         if (attribs["src"]) {
           attribs["src"] = attribs["src"]
             .replace("%PUBLIC_URL%", "/")
-            .replace(/\/+/gm, "/");
+            .replace(/^\/\//, "/")
+            .replace(/([^:]\/)\/+/g, "$1");
         }
 
         if (element.tagName === "body") {
