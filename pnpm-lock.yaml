@@ -1,8 +1,9 @@
 dependencies:
-  '@jarred/htmlbuild': 1.0.2
+  '@jarred/htmlbuild': 1.0.3
   browser-resolve: 2.0.0
   cheerio: 1.0.0-rc.5
   dom-serializer: 1.2.0
+  domhandler: 4.0.0
   esbuild-wasm: 0.9.0
   htmlparser2: 6.0.1
   idb: 6.0.0
@@ -29,6 +30,7 @@ devDependencies:
   '@types/wicg-file-system-access': 2020.9.1
   '@types/xmldom': 0.1.30
   esbuild: 0.9.0
+  esbuild-plugin-ifdef: 1.0.1
   gzip-cli: 1.2.0
   jest: 26.6.3
   serve-handler: 6.1.3
@@ -360,7 +362,7 @@ packages:
       node: '>=8'
     resolution:
       integrity: sha512-ZXRY4jNvVgSVQ8DL3LTcakaAtXwTVUxE81hslsyD2AtoXW/wVob10HkOJ1X/pAlcI7D+2YoZKg5do8G/w6RYgA==
-  /@jarred/htmlbuild/1.0.2:
+  /@jarred/htmlbuild/1.0.3:
     dependencies:
       dom-serializer: 1.2.0
       esbuild: 0.9.0
@@ -369,7 +371,7 @@ packages:
     dev: false
     hasBin: true
     resolution:
-      integrity: sha512-todLSTnccagVK295srSgM/h0Ex7dV4kEssaxZQ4WIWUrQG9I6axr4rHRVplB5o0f1YfyBWwglO18pEeGIS9QzA==
+      integrity: sha512-LSE76o8D2McI3oQYughZZn6R97PpO8p2GI1nCbwwN7vff8eqQrpAx0wd3jj/qG7j6EPPZz4V6J842xvufFRrnA==
   /@jest/console/26.6.2:
     dependencies:
       '@jest/types': 26.6.2
@@ -1672,6 +1674,10 @@ packages:
     dev: true
     resolution:
       integrity: sha512-7dFHNmqeFSEt2ZBsCriorKnn3Z2pj+fd9kmI6QoWw4//DL+icEBfc0U7qJCisqrTsKTjw4fNFy2pW9OqStD84g==
+  /esbuild-plugin-ifdef/1.0.1:
+    dev: true
+    resolution:
+      integrity: sha512-dn1sf+WGIUBp4kxN+rJRYIXrmGTwRLyhWASmhl8IKKKPfIlWFE8hloAVnI6mM5jPF3+abDvkndYe+RZDFXItbA==
   /esbuild-wasm/0.9.0:
     dev: false
     engines:
@@ -4801,7 +4807,7 @@ packages:
     resolution:
       integrity: sha512-aePbxDmcYW++PaqBsJ+HYUFwCdv4LVvdnhBy78E57PIor8/OVvhMrADFFEDh8DHDFRv/O9i3lPhsENjO7QX0+A==
 specifiers:
-  '@jarred/htmlbuild': ^1.0.2
+  '@jarred/htmlbuild': ^1.0.3
   '@types/jest': ^26.0.20
   '@types/lodash-es': ^4.17.4
   '@types/node': ^14.14.31
@@ -4813,7 +4819,9 @@ specifiers:
   browser-resolve: ^2.0.0
   cheerio: ^1.0.0-rc.5
   dom-serializer: ^1.2.0
+  domhandler: ^4.0.0
   esbuild: ^0.9.0
+  esbuild-plugin-ifdef: ^1.0.1
   esbuild-wasm: ^0.9.0
   gzip-cli: ^1.2.0
   htmlparser2: ^6.0.1

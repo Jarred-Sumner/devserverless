@@ -1,6 +1,7 @@
 import type { BuildOptions } from "esbuild";
 import { cloneDeep } from "lodash-es";
 import * as semver from "semver";
+import * as path from "path";
 export interface RunConfiguration {
   // If you pass it a filename ending in .html, all navigation routes will go to that file.
   // If you pass it a folder, it will route based on the filesystem, Next.js-style.
@@ -128,6 +129,12 @@ export class PackageJSONFile extends PackageJSON {
     return pkg;
   }
   handle: FileSystemFileHandle;
+
+  get staticPath() {
+    return path.extname(this.run.router)
+      ? path.join(this.run.router, "../")
+      : this.run.router;
+  }
 
   async save() {
     const perm = await this.handle.createWritable({

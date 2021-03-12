@@ -3,6 +3,8 @@ import * as path from "path";
 
 export class NativeFS {
   constructor(root: FileSystemDirectoryHandle) {
+    if (!root || !(root instanceof FileSystemDirectoryHandle))
+      throw new TypeError("root must be a FileSystemDirectoryHandle");
     this.root = root;
   }
 
@@ -122,26 +124,32 @@ export class NativeFS {
     if (!path.isAbsolute(_path) || !_path.startsWith("/")) {
       _path = path.join("/", _path);
     }
-
-    _path = path.normalize(_path);
-
-    let component = _path;
-    while (_path.includes("/") && _path.length > 1 && from) {
-      try {
-        component = _path.substring(0, _path.indexOf("/"));
-        if (_path.length - component.length > 0) {
-          _path = _path.substring(component.length);
-          from = await from.getDirectoryHandle(component);
-        } else {
-          return await from.getDirectoryHandle(component);
-        }
-      } catch (exception) {
-        //#ifdef VERBOSE
-        console.error(exception);
-        //#endif
-        return null;
-      }
+    let parts = _path.split("/");
+    for (let i = 0; i < parts.length; i++) {
+      if (!parts[i]) continue;
+      from = await from.getDirectoryHandle(parts[i]);
     }
+    return from;
+
+    // let i = 0,
+    //   nextI = 0;
+    // while (i > -1 && i < _path.length) {
+    //   nextI = _path.indexOf("/", i);
+
+    //   from = await from.getDirectoryHandle(
+    //     _path.substring(i + 1, nextI > -1 ? nextI : undefined)
+    //   );
+    //   i = nextI + 1;
+    // }
+    // return from;
+    // for (let i = 0; i < _path.length; i++) {}
+    // let parts = _path.split("/");
+    // for (let i = 0; i < parts.length; i++) {
+    //   if (!parts[i]) break;
+    //   from = await from.getDirectoryHandle(parts[i]);
+    // }
+
+    return from;
 
     return null;
   }

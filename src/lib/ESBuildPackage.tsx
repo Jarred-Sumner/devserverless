@@ -19,8 +19,12 @@ import type { OutputParams } from "src/lib/rpc";
 import { ErrorCode } from "./ErrorCode";
 import { getCache } from "./getCache";
 import { DomUtils, Parser } from "htmlparser2";
+import { bootstrap } from "src/lib/bootstrapper";
+import { Text } from "domhandler/lib/node";
 
 const TRY_TO_USE_NODE_MODULES = false;
+
+const verbose = process.env.VERBOSE ? console.log : (...a) => {};
 
 function isValidEntryPoint(point: string) {
   return (
@@ -79,7 +83,6 @@ export class ESBuildPackage {
     resolveDir: string,
     canRetry = true
   ) {
-    debugger;
     if (_path.includes("//")) {
       _path = _path.replace(/\/+/gm, "/");
     }
@@ -202,6 +205,7 @@ export class ESBuildPackage {
       publicPath: ESBuildPackage.origin + this.relativePath,
       plugins: [this.asPlugin()],
       write: false,
+      splitting: true,
       loader: this.pkg.esbuild.loader
         ? this.pkg.esbuild.loader
         : {
@@ -223,16 +227,34 @@ export class ESBuildPackage {
       throw err;
     }
 
-    for (let script of route.builder.scripts.values()) {
-      script.attribs["type"] = "module";
-      script.attribs["defer"] = "";
-      script.attribs["data-src"] = script.attribs["src"];
-      // script.attribs[
-      //   "src"
-      // ] = `/_dist_/importErrorCatcher?url=${encodeURIComponent(
-      //   script.attribs["src"]
-      // )}`;
+    const scripts = route.builder.scripts;
+    for (let outputFile in result.metafile.outputs) {
+      const file = result.metafile.outputs[outputFile];
+      if (
+        !result.metafile.outputs[outputFile].entryPoint ||
+        path.extname(outputFile) !== ".js"
+      ) {
+        continue;
+      }
+      const entryPoint = route.resolveFrom(file.entryPoint);
+
+      if (scripts.has(entryPoint)) {
+        const script = scripts.get(entryPoint);
+        const src = route.resolveEntryPoint(outputFile);
+        const text = new Text(bootstrap(src));
+        script.attribs["data-src"] = src;
+        script.attribs["type"] = "module";
+        delete script.attribs["src"];
+        for (let i = 0; i < script.attributes.length; i++) {
+          if (script.attributes[i].name === "src") {
+            script.attributes.splice(i, 1);
+            continue;
+          }
+        }
+        DomUtils.appendChild(script, text);
+      }
     }
+
     const html = route.renderToString(result, config);
 
     return {
@@ -247,6 +269,8 @@ export class ESBuildPackage {
   }
 
   resolveFile = async (opts: OnResolveArgs): Promise<OnResolveResult> => {
+    verbose("[Resolve]", opts);
+
     const components = opts.path.split("/");
     const pkgName = components[0];
 
@@ -301,9 +325,7 @@ export class ESBuildPackage {
   };
 
   loadFile = async (opts: OnLoadArgs): Promise<OnLoadResult> => {
-    //#ifdef VERBOSE
-    console.log("[Load]", opts);
-    //#endif
+    verbose("[Load]", opts);
 
     // Use static folder for files
     if (
@@ -318,6 +340,7 @@ export class ESBuildPackage {
 
     return {
       contents: await this.root.readFileText(opts.path),
+
       // resolveDir: path.dirname(opts.path),
       loader: "default",
     };

@@ -2,8 +2,9 @@
 
 .__DevServer__ErrorPage {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-start;
   min-height: 100vh;
   min-width: 100vw;
 }
@@ -19,9 +20,11 @@
   max-width: 800px;
   width: 100%;
   grid-auto-flow: row;
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
+.__DevServer__ErrorPage-footerText a,
+.__DevServer__ErrorPage-footerText,
 .__DevServer__ErrorPage-footer,
 .__DevServer__ErrorPage-heading {
   text-transform: uppercase;
@@ -30,7 +33,10 @@
   color: rgb(220, 220, 220);
   font-size: 0.8rem;
 }
-
+.__DevServer__ErrorPage-footerText a,
+.__DevServer__ErrorPage-footerText {
+  text-transform: unset;
+}
 .__DevServer__Error-sourceCode {
   display: grid;
   grid-template-columns: min-content auto;

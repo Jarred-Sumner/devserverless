@@ -18,6 +18,8 @@ import { filetypes } from "src/icons/filetypes/filetypes";
 import * as path from "path-browserify";
 import { StoredPackage } from "src/lib/StoredPackage";
 import { ErrorCode } from "src/lib/ErrorCode";
+import { hasGestured } from "src/_dev_/hasGestured";
+import { renderPermissionError } from "src/_dev_/ErrorPage";
 
 const packager = new InitialPackager();
 
@@ -51,7 +53,6 @@ const PackageProvider = ({ children }) => {
   const setDirectory = React.useCallback(
     async (dirHandle) => {
       // (globalThis["IDLE_WORKER"] as SharedWorker).port.postMessage(dirHandle);
-
       if (dirHandle) {
         try {
           pkgJSON.handle = await dirHandle.getFileHandle("package.json");
@@ -62,17 +63,16 @@ const PackageProvider = ({ children }) => {
 
         if (pkgJSON.run?.router) {
           const fs = new NativeFS(dirHandle);
+          const staticHandle = await fs.resolveDirectoryHandle(
+            pkgJSON.staticPath,
+            fs.root
+          );
+
           const record = StoredPackage.fromRecord({
             id: getPackageID(),
             lastBuild: null,
             handle: dirHandle,
-            staticHandle: path.extname(pkgJSON.run?.router)
-              ? await fs.resolveDirectoryHandle(
-                  path.normalize(path.join(pkgJSON.run?.router, "../"))
-                )
-              : await fs.resolveDirectoryHandle(
-                  path.normalize(path.join(pkgJSON.run?.router))
-                ),
+            staticHandle,
             routerType: path.extname(pkgJSON.run.router)
               ? RouterType.spa
               : RouterType.filesystem,
@@ -86,7 +86,7 @@ const PackageProvider = ({ children }) => {
             packager.storedPackage = storedPackage;
           }
 
-          await packager.database.saveDir(dirHandle);
+          await packager.database.saveDir(dirHandle, pkgJSON.handle);
           pkgJSON.process(await (await pkgJSON.handle.getFile()).text());
         }
       }
@@ -99,13 +99,12 @@ const PackageProvider = ({ children }) => {
   React.useEffect(() => {
     packager.database
       .loadDir()
-      .then(async (dir: FileSystemDirectoryHandle) => {
+      .then(async ({ directory: dir, pkgHandle } = {}) => {
         if (dir) {
           // (globalThis["IDLE_WORKER"] as SharedWorker).port.postMessage(dir);
 
           if (
-            (!globalThis.navigator.userActivation ||
-              globalThis.navigator.userActivation.isActive) &&
+            hasGestured() &&
             (await dir.queryPermission({ mode: "read" })) !== "granted"
           ) {
             const res = await dir.requestPermission({ mode: "read" });
@@ -113,17 +112,12 @@ const PackageProvider = ({ children }) => {
           }
         }
 
-        if (
-          dir &&
-          (!globalThis.navigator.userActivation ||
-            globalThis.navigator.userActivation.isActive)
-        ) {
-          pkgJSON.handle = await dir.getFileHandle("package.json");
+        pkgJSON.handle = pkgHandle;
 
+        if (pkgJSON.handle) {
           pkgJSON.process(await (await pkgJSON.handle.getFile()).text());
-
-          return dir;
         }
+        return dir;
       })
       .then(
         (dir) => {
@@ -736,8 +730,30 @@ const RoutingSection = ({}) => {
 
   React.useEffect(() => {
     async function loadValues() {
-      const list = await getRouteFilesForHandle(directory);
-      setValues(list);
+      try {
+        const list = await getRouteFilesForHandle(directory);
+        setValues(list);
+      } catch (exception) {
+        if (
+          typeof exception === "object" &&
+          exception instanceof DOMException
+        ) {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "/_dev_/ErrorPage.css";
+          document.head.appendChild(link);
+          link.addEventListener("load", () => {
+            document.body.innerHTML = renderPermissionError(directory.name);
+
+            document
+              .querySelector("#button")
+              .addEventListener("click", async () => {
+                await directory.requestPermission({ mode: "read" });
+                location.pathname = location.pathname;
+              });
+          });
+        }
+      }
     }
 
     if (directory) {
@@ -820,7 +836,6 @@ const RoutingSection = ({}) => {
 
 const VerifyFolder = ({}) => {
   const { directoryLoadingState, directory } = React.useContext(PackageContext);
-
   return (
     <main className="NewProjectPage">
       <div className="TitleContainer">

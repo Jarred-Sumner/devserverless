@@ -5,15 +5,37 @@ const http = require("http");
 const fs = require("fs");
 const util = require("util");
 const cacheManifestPlugin = require("./src/cacheManifestPlugin");
+const ifdef = require("esbuild-plugin-ifdef");
 const rm = util.promisify(fs.rm);
 
 if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = "development";
 }
 
+if (process.env.NODE_ENV === "development") {
+  // process.env.VERBOSE = "true";
+} else {
+  process.env.NODE_ENV = "production";
+}
+
 const BUILD_FOLDER = process.env.NODE_ENV === "development" ? "dist" : "prod";
 const port = parseInt(String(process.env.PORT || 8029), 10);
 const builds = [];
+
+const defines = {
+  "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
+  "process.env.VERBOSE": JSON.stringify(false),
+};
+
+const plugins = () => [
+  // ifdef(
+  //   {
+  //     "process.env.NODE_ENV": process.env.NODE_ENV,
+  //   },
+  //   process.cwd(),
+  //   ["vendor", "node_modules", ".git"]
+  // ),
+];
 
 const baseBuildConfig = {
   bundle: true,
@@ -25,15 +47,14 @@ const baseBuildConfig = {
   outbase: "src",
   loader: {
     ".jsfile": "text",
+    ".jsinline": "text",
     ".jsurl": "file",
     ".html": "file",
     ".wasm": "file",
     ".json": "text",
   },
   sourcemap: "both",
-  define: {
-    "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
-  },
+  define: defines,
 };
 
 if (process.env.NODE_ENV === "development") {
@@ -44,15 +65,21 @@ if (process.env.NODE_ENV === "development") {
 async function buildInlineJS() {
   const inline = await build({
     ...baseBuildConfig,
-    entryPoints: ["./src/_dev_/requestPermissionRunner.inlinejs"],
+    entryPoints: ["./src/_dev_/requestPermissionRunner.ts"],
     loader: {
       ...baseBuildConfig.loader,
-      ".inlinejs": "ts",
     },
     metafile: true,
-    outExtension: { ".js": ".jsfile" },
+    outExtension: { ".js": ".jsinline" },
+    outfile: path.join(
+      __dirname,
+      "src/_dev_/inline/requestPermissionRunner.jsinline"
+    ),
+    outdir: undefined,
     // watch: false,
+    plugins: plugins(),
   });
+
   builds.push(inline);
   console.log("Built worker");
 }
@@ -61,12 +88,17 @@ async function buildSharedWorker() {
   await buildInlineJS();
   const workers = await build({
     ...baseBuildConfig,
-    entryPoints: ["./src/_dev_/worker.tsx", "./src/_dev_/ServiceWorker.ts"],
+    entryPoints: [
+      "./src/_dev_/worker.tsx",
+      "./src/_dev_/ServiceWorker.ts",
+      "./src/_dev_/ErrorPage.tsx",
+    ],
     loader: {
       ...baseBuildConfig.loader,
     },
     outExtension: { ".js": ".jsurl" },
     metafile: true,
+    plugins: plugins(),
     // watch: false,
   });
   builds.push(workers);
@@ -85,7 +117,7 @@ async function buildServiceWorker() {
     outExtension: { ".js": ".js" },
     outdir: undefined,
     outfile: path.join(__dirname, BUILD_FOLDER, "service-worker.js"),
-    plugins: [cacheManifestPlugin(builds)],
+    plugins: [...plugins(), cacheManifestPlugin(builds)],
     // watch: false,
   });
 }
@@ -133,21 +165,21 @@ async function start() {
   }
 
   await buildSharedWorker();
+  const builder = await build({
+    ...baseBuildConfig,
+    entryPoints: [
+      path.join(__dirname, "src", "_dev_", "setup.tsx"),
+      path.join(__dirname, "src", "_dev_", "index.tsx"),
+      path.join(__dirname, "src", "_dev_", "ErrorPage.css"),
+    ],
+    plugins: plugins(),
+    metafile: true,
+  });
+  builds.push(builder);
+
+  await buildServiceWorker();
 
   if (process.env.NODE_ENV === "development") {
-    const service = await build({
-      ...baseBuildConfig,
-      entryPoints: [
-        path.join(__dirname, "src", "_dev_", "setup.tsx"),
-        path.join(__dirname, "src", "_dev_", "index.tsx"),
-        path.join(__dirname, "src", "_dev_", "ErrorPage.css"),
-      ],
-      metafile: true,
-    });
-    builds.push(service);
-
-    await buildServiceWorker();
-
     const server = http.createServer((request, response) => {
       // You pass two more arguments for config and middleware
       // More details here: https://github.com/vercel/serve-handler#options
@@ -175,15 +207,6 @@ async function start() {
       console.log(`Running at http://localhost:${port}`);
     });
   } else {
-    const builder = await build({
-      ...baseBuildConfig,
-      entryPoints: [
-        path.join(__dirname, "src", "_dev_", "setup.tsx"),
-        path.join(__dirname, "src", "_dev_", "index.tsx"),
-      ],
-      metafile: true,
-    });
-
     for (let name of fs.readdirSync(path.join(__dirname, BUILD_FOLDER))) {
       if (name.includes(".wasm") || name.includes(".jsurl")) {
         fs.copyFileSync(

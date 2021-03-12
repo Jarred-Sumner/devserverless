@@ -14,6 +14,7 @@ export class InitialPackager extends Packager {
       return null;
     }
   }
+
   storedPackage: StoredPackage;
 
   async verify(handle: FileSystemDirectoryHandle) {

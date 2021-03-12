@@ -18,7 +18,7 @@ let finishPromise = worker.start();
 // self.addEventListener("message", handleMessage);
 
 self.addEventListener("activate", function (event) {
-  // self.skipWaiting();
+  self.skipWaiting();
 });
 
 self.addEventListener("install", (e) => {

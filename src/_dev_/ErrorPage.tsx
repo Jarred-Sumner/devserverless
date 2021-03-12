@@ -4,7 +4,7 @@ import type {
   PackagerPermissionError,
 } from "src/lib/ESBuildPackage";
 import { ErrorCode } from "src/lib/ErrorCode";
-import REQUEST_PERMISSION_ERROR from "dist/_dev_/requestPermissionRunner.jsfile";
+import REQUEST_PERMISSION_ERROR from "src/_dev_/inline/requestPermissionRunner.jsinline";
 import type { BuildFailure, Location, Message, Note } from "esbuild";
 import { IDLE_WORKER_CODE } from "src/htmlGenerator";
 import { getPackageID } from "src/_dev_/getPackageID";
@@ -149,46 +149,48 @@ async function renderESBuildError(
 
   return body;
 }
+
+export function renderPermissionError(directoryName: string) {
+  return `<div class="__DevServer__ErrorPage">
+<div class="__DevServer__ErrorPage-modal">
+  <div class="__DevServer__ErrorPage-heading">
+    PERMISSIONS REQUEST
+  </div>
+  <div class="__DevServer__ErrorPage-title __DevServer__ErrorPage-title--no-y">
+    Allow DevServer to read <span class="__DevServer_Mono">${directoryName}</span>?
+  </div>
+  <div class="__DevServer__ErrorPage-subtitle">
+    DevServer uses the filesystem API to compile, bundle, serve assets.
+  </div>
+  <div class="__DevServer__ErrorPage-button" id="button">Allow access</div>
+
+
+  <div class="__DevServer__ErrorPage-footer">
+    <div>
+      ${new Intl.DateTimeFormat(["lookup"], {
+        dateStyle: "short",
+        timeStyle: "long",
+      }).format(new Date())}
+    </div>
+
+    <div>
+    ${directoryName}
+    </div>
+  </div>
+</div>
+<div class="__DevServer__ErrorPage-footerText">If you see this often, <a target="_blank" href="/_dev_/config">keep a separate tab open</a>.</div>
+</div>
+<script module type="application/javascript">
+globalThis.HANDLE_ID = "${directoryName}";
+${REQUEST_PERMISSION_ERROR}
+</script>`;
+}
+
 export async function buildError(error: PackagerError) {
   switch (error.code) {
     case ErrorCode.requirePermission: {
       let _error = error as PackagerPermissionError;
-      return `
-      <div class="__DevServer__ErrorPage">
-        <div class="__DevServer__ErrorPage-modal">
-          <div class="__DevServer__ErrorPage-heading">
-            PERMISSIONS REQUEST
-          </div>
-          <div class="__DevServer__ErrorPage-title __DevServer__ErrorPage-title--no-y">
-            Allow DevServer to read <span class="__DevServer_Mono">${
-              _error.directoryName
-            }</span>?
-          </div>
-          <div class="__DevServer__ErrorPage-subtitle">
-            DevServer uses the filesystem API to compile, bundle, serve assets.
-          </div>
-          <div class="__DevServer__ErrorPage-button" id="button">Allow access</div>
-
-
-          <div class="__DevServer__ErrorPage-footer">
-            <div>
-              ${new Intl.DateTimeFormat(["lookup"], {
-                dateStyle: "short",
-                timeStyle: "long",
-              }).format(new Date())}
-            </div>
-
-            <div>
-            ${_error.directoryName}
-            </div>
-          </div>
-    </div>
-  </div>
-    <script module type="application/javascript">
-      globalThis.HANDLE_ID = "${_error.directoryName}";
-      ${REQUEST_PERMISSION_ERROR}
-    </script>
-      `;
+      return renderPermissionError(_error.directoryName);
       break;
     }
     case ErrorCode.buildFailed: {
@@ -221,6 +223,7 @@ export async function buildError(error: PackagerError) {
           </div>
         </div>
       </div>
+      <a class="__DevServer__ErrorPage-footerText" target="_blank" href="/_dev_/config">Configure devserver</a>
     </div>`;
       break;
     }
@@ -237,9 +240,24 @@ export async function buildError(error: PackagerError) {
 
         <div class="__DevServer__ErrorPage-body">${error.message}</div>
         </div>
+        <a class="__DevServer__ErrorPage-footerText" target="_blank" href="/_dev_/config">Configure devserver</a>
     </div>`;
     }
   }
+}
+
+export async function renderRuntimeError(error: Error) {
+  //   return `
+  // <link href="/_dev_/ErrorPage.css" rel="stylesheet" />
+  // <div class="__DevServer__Error">
+  // <div class="__DevServer__Error-text ${
+  //     !error.location ? "__DevServer__Error-text--no-location" : ""
+  //   }">${error.text
+  //     .replace("[devserverless]", "")
+  //     .trim()}<span class="__DevServer__Error-text-number">${
+  //     index + 1
+  //   }</span></div>
+  // `;
 }
 
 export async function renderPackagerError(error) {
@@ -255,8 +273,8 @@ export async function renderPackagerError(error) {
 
 export async function injectRenderPackagerError(error) {
   return [
-    `<script type="module" module>${IDLE_WORKER_CODE}</script`,
-    `<link href="/_dev_/ErrorPage.css" rel="stylesheet" />`,
+    `<script type="module" module>${IDLE_WORKER_CODE}</script>`,
+    ``,
     await buildError(error),
   ];
 }

@@ -86,7 +86,6 @@ export class StoredPackage {
       this.routerType = RouterType.spa;
       this.router = new SinglePageAppRouter(this.root, this.static);
       this.router.destination = path.basename(this.pkg.run.router);
-      debugger;
     } else {
       this.routerType = RouterType.filesystem;
       this.router = new FilesystemRouter(this.root, this.static);

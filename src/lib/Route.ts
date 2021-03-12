@@ -42,11 +42,20 @@ export class Route {
     );
   }
 
+  resolvedEntryPoints = new Map<string, string>();
   resolveFrom = (..._path: string[]) => {
     return path.join(this.absWorkingDirectory, ..._path);
   };
-  resolveTo = (..._path: string[]) => {
-    return path.join(this.outDestination, ..._path);
+  resolveTo = (_path, node) => {
+    const out = path.join(this.outDestination, _path);
+    if (path.extname(out) === ".js") {
+      return null;
+    }
+
+    return out;
+  };
+  resolveEntryPoint = (_path: string) => {
+    return path.join(this.outDestination, _path);
   };
 }
 

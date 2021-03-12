@@ -8,7 +8,7 @@ export class Database {
 
   async load() {
     if (this.db) return;
-    this.db = await IDB.openDB("handles", 7, {
+    this.db = await IDB.openDB("handles", 8, {
       upgrade(database, oldVersion, newVersion, transaction) {
         if (!database.objectStoreNames.contains("packages"))
           database.createObjectStore("packages");
@@ -24,18 +24,21 @@ export class Database {
     await this.db.put("packages", pkg.toRecord(), pkg.id);
   }
 
-  async saveDir(directory: FileSystemDirectoryHandle) {
+  async saveDir(
+    directory: FileSystemDirectoryHandle,
+    pkgHandle: FileSystemFileHandle
+  ) {
     await this.load();
     await this.db.put(
       "dirs",
-      { directory, id: getPackageID() },
+      { directory, id: getPackageID(), pkgHandle },
       getPackageID()
     );
   }
 
   async loadDir(): Promise<FileSystemDirectoryHandle> {
     await this.load();
-    return (await this.db.get("dirs", getPackageID()))?.directory || null;
+    return await this.db.get("dirs", getPackageID());
   }
 
   async loadPackage(id: string) {
