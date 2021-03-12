@@ -1,5 +1,5 @@
 import * as IDB from "idb";
-import * as path from "path";
+import { openDB } from "src/lib/openDB";
 import { getPackageID } from "src/_dev_/getPackageID";
 import { StoredPackage, StoredPackageRecord } from "./StoredPackage";
 
@@ -8,15 +8,7 @@ export class Database {
 
   async load() {
     if (this.db) return;
-    this.db = await IDB.openDB("handles", 8, {
-      upgrade(database, oldVersion, newVersion, transaction) {
-        if (!database.objectStoreNames.contains("packages"))
-          database.createObjectStore("packages");
-
-        if (!database.objectStoreNames.contains("dirs"))
-          database.createObjectStore("dirs");
-      },
-    });
+    this.db = await openDB();
   }
 
   async savePackage(pkg: StoredPackage) {
