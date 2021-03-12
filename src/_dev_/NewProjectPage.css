@@ -214,3 +214,84 @@
   font-size: 0.8rem;
   color: rgb(100, 100, 100);
 }
+
+.GeneratorModal-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding-top: 100px;
+  z-index: 999;
+  background-color: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(2px);
+}
+
+.GeneratorModal {
+  padding: 24px;
+  background-color: #222;
+  border: 1px solid #444;
+  flex-grow: 0;
+  height: min-content;
+  border-radius: 4px;
+  filter: drop-shadow(1px 1px 3px #333);
+}
+
+.GeneratorModal-title {
+  font-size: 1.5rem;
+  color: white;
+  font-weight: 500;
+  margin-bottom: 2rem;
+}
+
+.GeneratorModal-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.GeneratorModal-button {
+  color: white;
+  background-color: var(--background);
+  padding: 10px 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex: 0.5;
+  min-width: 80px;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: scale(1);
+  transition: transform 0.1s linear;
+}
+
+.GeneratorModal-button:hover {
+  transform: scale(1.03);
+}
+
+.GeneratorModal-button:active {
+  transform: scale(1.02);
+}
+
+.GeneratorModal-button--cancel {
+  --background: rgb(78, 78, 78);
+  --border: rgb(125, 125, 125);
+}
+
+.GeneratorModal-button--confirm {
+  --background: rgb(98, 0, 255);
+  --border: rgb(163, 107, 255);
+}
+
+.GeneratorModal-button--confirm:hover {
+  --background: rgb(86, 1, 223);
+}
+
+.GeneratorModal-button--cancel:hover {
+  --background: rgb(80, 80, 80);
+  --border: rgb(100, 100, 100);
+}

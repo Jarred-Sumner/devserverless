@@ -15,6 +15,7 @@ export enum ErrorCode {
   buildFailed,
   invalidTSConfig,
   routeNotFound,
+  needsSetup,
   needsConfig,
   failedToResolveNPMPackage,
 }

@@ -22,6 +22,16 @@ import { DomUtils, Parser } from "htmlparser2";
 import { bootstrap } from "src/lib/bootstrapper";
 import { Text } from "domhandler/lib/node";
 
+const DEFAULT_LOADERS = {
+  ".jsx": "jsx",
+  ".js": "jsx",
+  ".ts": "tsx",
+  ".tsx": "js",
+  ".mjs": "js",
+  ".cjs": "js",
+  ".css": "css",
+};
+const host = "cdn.skypack.dev";
 const TRY_TO_USE_NODE_MODULES = false;
 
 const verbose = process.env.VERBOSE ? console.log : (...a) => {};
@@ -206,6 +216,10 @@ export class ESBuildPackage {
       plugins: [this.asPlugin()],
       write: false,
       splitting: true,
+      define: {
+        ...this.pkg.esbuild.define,
+        "process.env.NODE_ENV": '"development"',
+      },
       loader: this.pkg.esbuild.loader
         ? this.pkg.esbuild.loader
         : {
@@ -274,14 +288,29 @@ export class ESBuildPackage {
     const components = opts.path.split("/");
     const pkgName = components[0];
 
+    const ext = path.extname(opts.path);
+
     if (this.pkg.allDependencies.has(pkgName)) {
       let file =
         components.length > 1 ? `/${components.slice(1).join("/")}` : "";
+
+      const external =
+        !ext || ext === "tsx" || ext === "jsx" || ext === "js" || ext === "ts";
       return {
-        path: `https://jspm.dev/${this.pkg.allDependencies.get(
-          pkgName
-        )}${file}`,
-        external: true,
+        path: `https://${host}/${this.pkg.allDependencies.get(pkgName)}${file}`,
+        // namespace: "remote",
+        external,
+        namespace: external ? undefined : "remote",
+
+        // namespace: "esbuild-pkg",
+      };
+    } else if (opts.namespace === "remote") {
+      return {
+        path: `https://${host}${opts.path}`,
+        namespace: "remote",
+        // external,
+        // namespace: external ? undefined : "remote",
+
         // namespace: "esbuild-pkg",
       };
     }
@@ -324,6 +353,51 @@ export class ESBuildPackage {
     };
   };
 
+  loadRemote = async (opts: OnLoadArgs): Promise<OnLoadResult> => {
+    verbose("[Load]", opts);
+
+    switch (path.extname(opts.path)) {
+      case ".png":
+      case ".jpg":
+      case ".jpeg":
+      case ".gif":
+      case ".webp":
+      case ".mp4":
+      case ".mov":
+      case ".mkv":
+      case ".tiff": {
+        return {
+          contents: new Uint8Array(
+            await (
+              await fetch(opts.path, {
+                cache: "default",
+                credentials: "omit",
+                keepalive: true,
+              })
+            ).arrayBuffer()
+          ),
+
+          // resolveDir: path.dirname(opts.path),
+          loader: "file",
+        };
+      }
+      default: {
+        return {
+          contents: await (
+            await fetch(opts.path, {
+              cache: "default",
+              credentials: "omit",
+              keepalive: true,
+            })
+          ).text(),
+
+          // resolveDir: path.dirname(opts.path),
+          loader: DEFAULT_LOADERS[path.extname(opts.path)] || "tsx",
+        };
+      }
+    }
+  };
+
   loadFile = async (opts: OnLoadArgs): Promise<OnLoadResult> => {
     verbose("[Load]", opts);
 
@@ -349,10 +423,12 @@ export class ESBuildPackage {
   asPlugin() {
     const resolveFile = this.resolveFile;
     const loadFile = this.loadFile;
+    const loadRemote = this.loadRemote;
     return {
       name: ESBuildPackage.pluginName,
       setup(build) {
         build.onResolve({ filter: /.*/ }, resolveFile);
+        build.onLoad({ filter: /.*/, namespace: "remote" }, loadRemote);
         build.onLoad({ filter: /.*/ }, loadFile);
       },
     } as Plugin;

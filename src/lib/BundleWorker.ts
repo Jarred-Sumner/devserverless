@@ -32,8 +32,9 @@ export class BundleWorker {
       }),
       database.load(),
     ]);
-    console.log("ESBuild loaded.");
-    console.log("Database loaded.");
+
+    // console.log("ESBuild loaded.");
+    // console.log("Database loaded.");
     this.database = database;
   }
 

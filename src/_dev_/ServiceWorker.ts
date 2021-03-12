@@ -3,32 +3,73 @@ import { BundleWorker } from "src/lib/BundleWorker";
 import { ErrorCode } from "src/lib/ErrorCode";
 import { PackagerError } from "src/lib/ESBuildPackage";
 import { getCache } from "src/lib/getCache";
+import { ServiceWorkerMethod } from "src/lib/rpc";
+import { StoredPackage } from "src/lib/StoredPackage";
 import * as ErrorPage from "src/_dev_/ErrorPage";
 
 const PRECACHE = "PRECACHE";
 const offlineCacheName = "OFFLINE_ONLY";
+const basePath = location.origin;
+const originURL = new URL(location.origin);
+const pkgName = originURL.host.substring(0, originURL.host.indexOf("."));
+let offlineCache: Cache;
+let bundleCache: Cache;
+let storedPackage: StoredPackage;
 
 let worker: BundleWorker = new BundleWorker();
 
-// function handleMessage(message: MessageEvent) {
-//   console.log(message);
-// }
+async function checkReady(ports: readonly MessagePort[]) {
+  if (storedPackage?.router) {
+    return -1;
+  }
+
+  try {
+    storedPackage = await worker.loadStoredPackage();
+    if (!storedPackage) {
+      return ErrorCode.needsSetup;
+    }
+
+    return -1;
+  } catch (exception) {
+    return exception.code;
+  }
+}
 
 let finishPromise = worker.start();
-// self.addEventListener("message", handleMessage);
+
+function onMessage(message: MessageEvent) {
+  switch (message?.data?.type) {
+    case ServiceWorkerMethod.isReady: {
+      const port = message.source;
+
+      checkReady(message?.data?.pathname).then((status) => {
+        port.postMessage({
+          type: ServiceWorkerMethod.isReady,
+          value: status,
+        });
+      });
+    }
+  }
+}
+
+self.addEventListener("message", onMessage);
 
 self.addEventListener("activate", function (event) {
   self.skipWaiting();
 });
 
 self.addEventListener("install", (e) => {
-  console.log("[Service Worker] Install");
+  // console.log("[Service Worker] Install");
   self.skipWaiting();
 
   (async () => {
     const cache = await caches.open(PRECACHE);
-    console.log("[Service Worker] Caching all: app shell and content");
-    await cache.addAll(globalThis.PRELOAD_MANIFEST);
+    // console.log("[Service Worker] Caching all: app shell and content");
+    try {
+      await cache.addAll(globalThis.PRELOAD_MANIFEST);
+    } catch (exception) {
+      console.error(exception);
+    }
   })();
 });
 
@@ -52,11 +93,6 @@ self.addEventListener("error", (event) => {
   console.error("[ServiceWorker] Error", event.error);
 });
 
-const basePath = location.origin;
-const originURL = new URL(location.origin);
-const pkgName = originURL.host.substring(0, originURL.host.indexOf("."));
-let offlineCache: Cache;
-let bundleCache: Cache;
 async function processURL(event: FetchEvent) {
   const { request } = event;
   const href = request.url;
@@ -71,10 +107,38 @@ async function processURL(event: FetchEvent) {
     if (r) {
       return r;
     }
+
+    if (isNavigationRequest && !navigator.onLine) {
+      return await caches.match("/_dev_/index.html");
+    }
   }
 
   if (url.origin !== location.origin) {
-    return fetch(event.request);
+    if (url.origin === "https://cdn.skypack.dev") {
+      if (!offlineCache) {
+        offlineCache = await caches.open(offlineCacheName);
+      }
+
+      let cached = await offlineCache.match(url.origin);
+      if (cached) {
+        return cached;
+      }
+
+      const response = await fetch(event.request);
+      await offlineCache.put(event.request, response.clone());
+      return response;
+    } else if (url.origin.startsWith("http")) {
+      const [response, _offlineCache] = await Promise.all([
+        fetch(event.request),
+        offlineCache ? offlineCache : caches.open(offlineCacheName),
+      ]);
+
+      offlineCache = _offlineCache;
+      await offlineCache.put(event.request, response.clone());
+      return response;
+    } else {
+      return await fetch(event.request);
+    }
   }
 
   if (isInternalRequest) {
@@ -125,7 +189,6 @@ async function processURL(event: FetchEvent) {
     finishPromise = null;
   }
 
-  let storedPackage: StoredPackage;
   try {
     storedPackage = await worker.loadStoredPackage();
   } catch (exception) {

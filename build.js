@@ -134,12 +134,20 @@ async function start() {
     path.join(__dirname, BUILD_FOLDER, "_dev_", "index.html")
   );
   await fs.promises.copyFile(
+    path.join(__dirname, "src", "_dev_", "index.html"),
+    path.join(__dirname, BUILD_FOLDER, "_dev_", "index.html")
+  );
+  await fs.promises.copyFile(
     path.join(__dirname, "src", "_dev_", "favicon.png"),
     path.join(__dirname, BUILD_FOLDER, "_dev_", "favicon.png")
   );
   await fs.promises.copyFile(
     path.join(__dirname, "src", "_dev_", "setup.html"),
     path.join(__dirname, BUILD_FOLDER, "_dev_", "setup.html")
+  );
+  await fs.promises.copyFile(
+    path.join(__dirname, "src", "_dev_", "config.html"),
+    path.join(__dirname, BUILD_FOLDER, "_dev_", "config.html")
   );
   await fs.promises.copyFile(
     path.join(__dirname, "src", "_dev_", "manifest.json"),
@@ -169,7 +177,7 @@ async function start() {
     ...baseBuildConfig,
     entryPoints: [
       path.join(__dirname, "src", "_dev_", "setup.tsx"),
-      path.join(__dirname, "src", "_dev_", "index.tsx"),
+      path.join(__dirname, "src", "_dev_", "index.ts"),
       path.join(__dirname, "src", "_dev_", "ErrorPage.css"),
     ],
     plugins: plugins(),
@@ -185,7 +193,8 @@ async function start() {
       // More details here: https://github.com/vercel/serve-handler#options
       return handler(request, response, {
         public: "./dist",
-        directoryListing: true,
+        directoryListing: false,
+        renderSingle: true,
 
         headers: [
           {

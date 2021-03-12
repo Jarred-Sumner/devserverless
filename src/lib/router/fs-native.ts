@@ -117,6 +117,35 @@ export class NativeFS {
     return null;
   }
 
+  async writeFileText(
+    __path: string,
+    text: string,
+    skipPermissionCheck = false
+  ) {
+    const dir = path.join(__path, "../");
+    let dirHandle =
+      dir !== "/" && dir !== ""
+        ? await this.resolveDirectoryHandle(dir, this.root)
+        : this.root;
+
+    const file = await dirHandle.getFileHandle(path.basename(__path), {
+      create: true,
+    });
+
+    if (
+      !skipPermissionCheck &&
+      (await !file.queryPermission({ mode: "readwrite" }))
+    ) {
+      await file.requestPermission({ mode: "readwrite" });
+    }
+
+    const writable = await file.createWritable();
+    const writer = writable.getWriter();
+    await writer.write(text);
+    await writer.close();
+    return file;
+  }
+
   async resolveDirectoryHandle(
     _path: string,
     from: FileSystemDirectoryHandle = this.root

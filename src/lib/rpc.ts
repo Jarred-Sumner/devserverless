@@ -21,3 +21,11 @@ export type OutputParams = {
   entryPoints: string[];
   html: string;
 };
+
+export enum ServiceWorkerMethod {
+  isReady,
+}
+
+export enum ServiceWorkerMethodResponse {
+  isReady,
+}

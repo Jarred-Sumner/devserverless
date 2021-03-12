@@ -20,7 +20,8 @@ import { StoredPackage } from "src/lib/StoredPackage";
 import { ErrorCode } from "src/lib/ErrorCode";
 import { hasGestured } from "src/_dev_/hasGestured";
 import { renderPermissionError } from "src/_dev_/ErrorPage";
-
+import { CreateReactAppGenerator } from "src/lib/generators/CreateReactAppGenerator";
+import { Portal } from "react-portal";
 const packager = new InitialPackager();
 
 enum DirectoryLoadState {
@@ -61,6 +62,8 @@ const PackageProvider = ({ children }) => {
           return;
         }
 
+        pkgJSON.process(await (await pkgJSON.handle.getFile()).text());
+
         if (pkgJSON.run?.router) {
           const fs = new NativeFS(dirHandle);
           const staticHandle = await fs.resolveDirectoryHandle(
@@ -87,7 +90,6 @@ const PackageProvider = ({ children }) => {
           }
 
           await packager.database.saveDir(dirHandle, pkgJSON.handle);
-          pkgJSON.process(await (await pkgJSON.handle.getFile()).text());
         }
       }
 
@@ -664,9 +666,22 @@ const NewProjectPage = () => {
   }
 };
 
+enum GeneratorModalState {
+  pending,
+  checking,
+  visible,
+  dismissed,
+}
+
 const RoutingSection = ({}) => {
   const { directory, directoryLoadingState, pkgJSON } = React.useContext(
     PackageContext
+  );
+
+  const [generatorModal, setGeneratorModalState] = React.useState(
+    !localStorage["hasDismissedCRA"]
+      ? GeneratorModalState.pending
+      : GeneratorModalState.dismissed
   );
 
   const [route, setRoute] = React.useState(() => {
@@ -680,10 +695,99 @@ const RoutingSection = ({}) => {
 
   React.useEffect(() => {
     if (directoryLoadingState === DirectoryLoadState.loaded) {
-      setRoute(pkgJSON?.run?.router ?? "");
-      setSavedRoute(pkgJSON?.run?.router ?? "");
+      const _route = pkgJSON?.run?.router ?? "";
+      setRoute(_route);
+      setSavedRoute(_route);
+
+      if (directory && pkgJSON && !_route) {
+        setGeneratorModalState((state) => {
+          if (
+            state === GeneratorModalState.dismissed ||
+            state === GeneratorModalState.checking ||
+            state === GeneratorModalState.visible
+          ) {
+            return state;
+          }
+
+          return GeneratorModalState.checking;
+        });
+      }
     }
-  }, [directoryLoadingState, pkgJSON, setRoute, setSavedRoute]);
+  }, [
+    directoryLoadingState,
+    pkgJSON,
+    directory,
+    setRoute,
+    setSavedRoute,
+    setGeneratorModalState,
+  ]);
+
+  React.useEffect(() => {
+    if (
+      !pkgJSON?.run?.router?.length &&
+      directoryLoadingState === DirectoryLoadState.loaded &&
+      directory
+    ) {
+      setGeneratorModalState((state) => {
+        switch (state) {
+          case GeneratorModalState.dismissed: {
+            return state;
+          }
+
+          case GeneratorModalState.visible: {
+            return state;
+          }
+
+          case GeneratorModalState.checking:
+          case GeneratorModalState.pending: {
+            CreateReactAppGenerator.isGeneratable(directory, pkgJSON).then(
+              (isGeneratable) => {
+                setGeneratorModalState((state) => {
+                  if (isGeneratable && state === GeneratorModalState.checking) {
+                    return GeneratorModalState.visible;
+                  } else {
+                    return GeneratorModalState.dismissed;
+                  }
+                });
+              },
+              console.error
+            );
+
+            return GeneratorModalState.checking;
+          }
+        }
+      });
+    }
+  }, [
+    setGeneratorModalState,
+    pkgJSON?.run?.router,
+    directoryLoadingState,
+    directory,
+    directory?.name,
+  ]);
+
+  const onCloseModal = async (confirm: boolean) => {
+    try {
+      if (confirm) {
+        await CreateReactAppGenerator.run(
+          directory,
+          pkgJSON,
+          packager.database
+        );
+        location.pathname = "/";
+      }
+    } catch (exception) {
+      console.error(exception);
+      alert("That didn't work. Check the console for more details");
+    } finally {
+      setGeneratorModalState(GeneratorModalState.dismissed);
+    }
+
+    if (!confirm) {
+      localStorage["hasDismissedCRA"] = true;
+    }
+  };
+
   const [values, setValues] = React.useState([]);
   const routeValue = React.useMemo(() => {
     for (let value of values) {
@@ -817,20 +921,48 @@ const RoutingSection = ({}) => {
   };
 
   return (
-    <section className="Section Routing">
-      <PackageJSONEditor
-        pkg={pkgJSON}
-        key={savedRoute}
-        values={values}
-        onChange={setRoute}
-        onSave={handleSave}
-        hasChanged={route && route !== savedRoute}
-        defaultValue={route}
-        folderName={directory?.name ?? "Loading..."}
-      />
+    <>
+      <section className="Section Routing">
+        <PackageJSONEditor
+          pkg={pkgJSON}
+          key={savedRoute}
+          values={values}
+          onChange={setRoute}
+          onSave={handleSave}
+          hasChanged={route && route !== savedRoute}
+          defaultValue={route}
+          folderName={directory?.name ?? "Loading..."}
+        />
 
-      {routeDescriptor}
-    </section>
+        {routeDescriptor}
+      </section>
+      {generatorModal === GeneratorModalState.visible && (
+        <Portal>
+          <div className="GeneratorModal-container">
+            <div className="GeneratorModal">
+              <div className="GeneratorModal-title">
+                Auto-configure as Create React App?
+              </div>
+              <div className="GeneratorModal-buttons">
+                <div
+                  onClick={() => onCloseModal(false)}
+                  className="GeneratorModal-button GeneratorModal-button--cancel"
+                >
+                  No
+                </div>
+
+                <div
+                  onClick={() => onCloseModal(true)}
+                  className="GeneratorModal-button GeneratorModal-button--confirm"
+                >
+                  Yes
+                </div>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+    </>
   );
 };
 
