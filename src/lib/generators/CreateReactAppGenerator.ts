@@ -11,7 +11,16 @@ import { Database } from "src/lib/Database";
 
 export enum GeneratorErrorCode {
   missingHTMLFile,
+  missingSrcDir,
+  missingEntryPoint,
 }
+
+const indexFileLocations = [
+  "src/index.js",
+  "src/index.jsx",
+  "src/index.ts",
+  "src/index.tsx",
+];
 
 export class GeneratorError extends Error {
   constructor(code: GeneratorErrorCode, ...args) {
@@ -65,8 +74,53 @@ export class CreateReactAppGenerator {
       );
     }
 
+    let indexLocation = "";
+    const srcDir = await this.directory.resolveDirectoryHandle(
+      "src",
+      this.directory.root
+    );
+
+    if (!srcDir) {
+      throw new GeneratorError(
+        GeneratorErrorCode.missingSrcDir,
+        `Missing src directory.`
+      );
+    }
+
+    for await (let name of srcDir.keys()) {
+      if (indexLocation) break;
+      switch (name) {
+        case "index.js": {
+          indexLocation = "src/index.js";
+          break;
+        }
+
+        case "index.jsx": {
+          indexLocation = "src/index.jsx";
+          break;
+        }
+
+        case "index.ts": {
+          indexLocation = "src/index.ts";
+          break;
+        }
+
+        case "index.tsx": {
+          indexLocation = "src/index.tsx";
+          break;
+        }
+      }
+    }
+
+    if (indexLocation === "") {
+      throw new GeneratorError(
+        GeneratorErrorCode.missingSrcDir,
+        `Missing index file.`
+      );
+    }
+
     let script = new Element("script", {
-      src: "../src/index.js",
+      src: `../${indexLocation}`,
       "data-generator": "cra-v1",
     });
     const source = await this.directory.readFileText("public/index.html");
@@ -78,20 +132,20 @@ export class CreateReactAppGenerator {
 
         if (attribs["rel"] === "manifest") {
           attribs["href"] = "/_dev_/manifest.json";
-        }
+        } else {
+          if (attribs["href"]) {
+            attribs["href"] = attribs["href"]
+              .replace("%PUBLIC_URL%", "/")
+              .replace(/^\/\//, "/")
+              .replace(/([^:]\/)\/+/g, "$1");
+          }
 
-        if (attribs["href"]) {
-          attribs["href"] = attribs["href"]
-            .replace("%PUBLIC_URL%", "/")
-            .replace(/^\/\//, "/")
-            .replace(/([^:]\/)\/+/g, "$1");
-        }
-
-        if (attribs["src"]) {
-          attribs["src"] = attribs["src"]
-            .replace("%PUBLIC_URL%", "/")
-            .replace(/^\/\//, "/")
-            .replace(/([^:]\/)\/+/g, "$1");
+          if (attribs["src"]) {
+            attribs["src"] = attribs["src"]
+              .replace("%PUBLIC_URL%", "/")
+              .replace(/^\/\//, "/")
+              .replace(/([^:]\/)\/+/g, "$1");
+          }
         }
 
         if (element.tagName === "body") {

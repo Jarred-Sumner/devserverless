@@ -17,7 +17,14 @@ let bundleCache: Cache;
 let storedPackage: StoredPackage;
 
 let worker: BundleWorker = new BundleWorker();
-
+const REMOTE_NPM_ORIGINS = new Map<string, boolean>([
+  ["https://cdn.skypack.dev", true],
+  ["https://jspm.dev", true],
+  ["https://jspm.io", true],
+  ["https://esm.run", true],
+  ["https://cdn.jsdelivr.net", true],
+  ["https://unpkg.com", true],
+]);
 async function checkReady(ports: readonly MessagePort[]) {
   if (storedPackage?.router) {
     return -1;
@@ -101,6 +108,7 @@ async function processURL(event: FetchEvent) {
   const isNavigationRequest = event.resultingClientId?.length;
   const isInternalRequest = url.pathname.startsWith("/_dev_/");
   const extension = path.extname(pathname);
+  const signal = event.request.signal;
 
   if (!navigator.onLine || href.includes("wasm") || href.includes("jsurl")) {
     const r = await caches.match(event.request);
@@ -114,18 +122,18 @@ async function processURL(event: FetchEvent) {
   }
 
   if (url.origin !== location.origin) {
-    if (url.origin === "https://cdn.skypack.dev") {
+    if (REMOTE_NPM_ORIGINS.has(url.origin)) {
       if (!offlineCache) {
         offlineCache = await caches.open(offlineCacheName);
       }
 
-      let cached = await offlineCache.match(url.origin);
+      let cached = await offlineCache.match(event.request);
       if (cached) {
         return cached;
       }
 
       const response = await fetch(event.request);
-      if (response.status === 200) {
+      if (response.status === 200 && !signal.aborted) {
         await offlineCache.put(event.request, response.clone());
       }
 
@@ -167,7 +175,7 @@ async function processURL(event: FetchEvent) {
       });
     } else {
       if (event.request.url.endsWith("config")) {
-        response = await fetch("/_dev_/setup");
+        response = await fetch("/_dev_/setup", { signal });
         canCache = false;
       } else {
         response = await fetch(event.request);
@@ -201,6 +209,7 @@ async function processURL(event: FetchEvent) {
   try {
     storedPackage = await worker.loadStoredPackage();
   } catch (exception) {
+    console.error(exception);
     switch (exception.code) {
       case ErrorCode.needsConfig: {
         headers.set("Location", location.origin + "/_dev_/" + "setup");
@@ -222,6 +231,8 @@ async function processURL(event: FetchEvent) {
     }
   }
 
+  if (signal.aborted) return null;
+
   if (
     !storedPackage &&
     isNavigationRequest &&
@@ -239,14 +250,26 @@ async function processURL(event: FetchEvent) {
     let res;
     try {
       let originalError = worker.buildErrors.get(pkgName);
-      res = await worker.bundleByURL(pathname);
+      res = await worker.bundleByURL(pathname, request.signal);
       if (
         originalError !== worker.buildErrors.get(pkgName) &&
         worker.buildErrors.get(pkgName)
       ) {
         throw worker.buildErrors.get(pkgName);
       }
+      if (signal.aborted) return null;
     } catch (exception) {
+      // DOMException: The request is not allowed by the user agent or the platform in the current context.
+      if (typeof exception === "object" && exception instanceof DOMException) {
+        const page = await ErrorPage.renderPackagerError(
+          PackagerError.with(ErrorCode.requirePermission, exception)
+        );
+        return new Response(new Blob([page]), {
+          status: 200,
+          headers,
+        });
+      }
+
       console.error(exception);
       headers.set("Cache-Control", "private");
       try {
@@ -273,6 +296,9 @@ async function processURL(event: FetchEvent) {
       res = worker.buildResults.get(pkgName);
     }
 
+    if (res?.warnings?.length) {
+      console.warn(...res.warnings);
+    }
     let response = res?.html ?? "";
     if (!response) {
       const page = await ErrorPage.renderPackagerError(
@@ -280,6 +306,14 @@ async function processURL(event: FetchEvent) {
       );
       return new Response(new Blob([page]), {
         status: 500,
+        headers,
+      });
+    }
+
+    if (request.url.endsWith(".out")) {
+      headers.set("Content-Type", "application/json");
+      return new Response(new Blob([JSON.stringify(res, null, 2)]), {
+        status: 200,
         headers,
       });
     }
@@ -307,7 +341,7 @@ async function processURL(event: FetchEvent) {
   }
 
   try {
-    return storedPackage.resolveStaticFile(request.url);
+    return storedPackage.resolveStaticFile(url.pathname);
   } catch (exception) {
     console.error("Error while rendering", request.url, exception);
     const page = await ErrorPage.renderPackagerError(

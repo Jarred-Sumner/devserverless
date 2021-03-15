@@ -5,6 +5,6 @@ import { getPackageID } from "./getPackageID";
 window.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#button").addEventListener("click", async () => {
     await requestPermission(getPackageID());
-    location.pathname = location.pathname;
+    location.reload();
   });
 });

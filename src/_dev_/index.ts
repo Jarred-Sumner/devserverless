@@ -13,6 +13,8 @@ globalThis["serviceWorkerRegistration"] = (
     // a consistent set of resources.
     window.location.reload();
   }
+
+  check();
 };
 
 async function check() {
@@ -30,5 +32,3 @@ async function check() {
 
   location.pathname = "/_dev_/setup";
 }
-
-check();

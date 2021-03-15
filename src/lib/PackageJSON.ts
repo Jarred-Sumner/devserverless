@@ -10,7 +10,16 @@ export interface RunConfiguration {
   isRouterUnset: boolean;
 }
 
-const AUTO_DEPENDENCIES = ["react", "react-dom", "prop-types", "object-assign"];
+const AUTO_DEPENDENCIES = [
+  "react",
+  "react-dom",
+  "prop-types",
+  "object-assign",
+  "react-bootstrap",
+  "antd",
+  "bootstrap",
+  "axios",
+];
 
 const dependencyKeys = [
   "dependencies",

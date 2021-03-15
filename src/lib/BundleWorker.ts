@@ -45,7 +45,7 @@ export class BundleWorker {
   buildErrors = new Map<string, Error>();
   private buildCallbacks = new Map<string, Function[]>();
 
-  async bundle(route: Route, pkg: StoredPackage) {
+  async bundle(route: Route, pkg: StoredPackage, signal: AbortSignal) {
     const id = pkg.id;
     if (this.buildStatus.get(id) === BuildStatus.building) {
       if (this.buildCallbacks.has(id)) {
@@ -67,7 +67,8 @@ export class BundleWorker {
 
     let res: OutputParams;
     try {
-      res = await esbuild.build(route);
+      res = await esbuild.build(route, signal);
+      if (signal?.aborted) return null;
     } catch (exception) {
       this.buildStatus.set(id, BuildStatus.error);
       this.buildErrors.set(id, exception);
@@ -143,24 +144,31 @@ export class BundleWorker {
     }
   }
 
-  async bundleByURL(url: string) {
+  async bundleByURL(url: string, signal: AbortSignal) {
     if (!this.storedPackage) await this.loadStoredPackage();
+    if (signal?.aborted) return null;
 
     if (!this.storedPackage.pkg) {
       await this.storedPackage.loadPackageJSON();
     }
 
+    if (signal?.aborted) return null;
+
     if (!this.storedPackage.router) {
       this.storedPackage.loadRouter();
     }
 
+    if (signal?.aborted) return null;
+
     const route = await this.storedPackage.router.resolve(url);
+
+    if (signal?.aborted) return null;
 
     if (!route) {
       throw PackagerError.with(ErrorCode.routeNotFound, null);
     }
 
-    return await this.bundle(route, this.storedPackage);
+    return await this.bundle(route, this.storedPackage, signal);
   }
 
   handleMessage = (event: MessageEvent, port: MessagePort) => {

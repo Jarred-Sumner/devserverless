@@ -11,11 +11,13 @@ export class LightDatabase {
 
   async hasAnyPackages() {
     await this.load();
-    return (await this.db.count("packages")) > 0;
+    debugger;
+    return (await this.db.getAll("packages")).length > 0;
   }
 
   async hasAnyDirs() {
     await this.load();
-    return (await this.db.count("dirs")) > 0;
+
+    return (await this.db.getAll("dirs")).length > 0;
   }
 }

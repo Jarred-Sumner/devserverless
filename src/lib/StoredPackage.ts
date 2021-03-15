@@ -124,7 +124,6 @@ export class StoredPackage {
   async resolveStaticFile(url: string) {
     let file: File;
     file = await this.static.nativeFile(url);
-    console.log(url);
 
     if (!file) {
       const headers = new Headers();
@@ -139,9 +138,15 @@ export class StoredPackage {
     }
 
     const headers = new Headers();
-    headers.set("Content-Type", Mime.getType(file.name).toString());
+
+    const mime = Mime.getType(file.name);
+
+    if (mime) {
+      headers.set("Content-Type", mime);
+    }
     if (typeof file.size === "number")
       headers.set("Content-Length", file.size.toString());
+
     return new Response(file, { headers: headers, status: 200 });
   }
 }

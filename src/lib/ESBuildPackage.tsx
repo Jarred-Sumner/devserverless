@@ -1,26 +1,29 @@
-import { build } from "esbuild-wasm";
+import { Text } from "domhandler/lib/node";
+import { ImportKind } from "esbuild";
 import type {
-  Location,
-  Plugin,
   BuildResult,
+  Location,
   OnLoadArgs,
   OnLoadResult,
   OnResolveArgs,
   OnResolveResult,
+  Plugin,
 } from "esbuild-wasm";
+import * as esbuild from "esbuild-wasm";
+import { DomUtils } from "htmlparser2";
 import Mime from "mime/lite";
 import path from "path-browserify";
-import { generateHTML } from "src/htmlGenerator";
-import { Database } from "src/lib/Database";
+import { bootstrap } from "src/lib/bootstrapper";
 import { PackageJSON } from "src/lib/PackageJSON";
 import { Route } from "src/lib/Route";
 import { NativeFS } from "src/lib/router/fs-native";
 import type { OutputParams } from "src/lib/rpc";
+import { render as renderSVG } from "svgj";
 import { ErrorCode } from "./ErrorCode";
 import { getCache } from "./getCache";
-import { DomUtils, Parser } from "htmlparser2";
-import { bootstrap } from "src/lib/bootstrapper";
-import { Text } from "domhandler/lib/node";
+
+const REACT_IMPORT_REGEX = /['"]react['"]/;
+const TSX_EXTENSIONS = [".tsx", ".js", ".jsx", ".mjs", ".ts"];
 
 function getModuleName(path: string) {
   if (path[0] === "@") {
@@ -67,7 +70,9 @@ const DEFAULT_NAMESPACES = {
   ".pdf": "local-url",
 };
 
-const host = "cdn.skypack.dev";
+const jsHost = "cdn.skypack.dev/";
+// const jsHost = "jspm.dev/npm:";
+const cssHost = "cdn.jsdelivr.net/npm/";
 const TRY_TO_USE_NODE_MODULES = false;
 
 const verbose = process.env.VERBOSE ? console.log : (...a) => {};
@@ -202,19 +207,35 @@ export class ESBuildPackage {
     let i = 0;
     const cache = await getCache();
     for (let file of result.outputFiles) {
+      const mime = Mime.getType(file.path);
+
       const dest = globalThis.location.origin + file.path;
       const headers = new Headers();
-      headers.set("Content-Length", file.contents.byteLength.toString(10));
-      headers.set("Content-Type", Mime.getType(file.path).toString());
-      await cache.put(
-        dest,
-        new Response(
-          new Blob([file.text], {
-            type: Mime.getType(file.path) as string,
-          }),
-          { headers }
-        )
-      );
+      if (mime) headers.set("Content-Type", mime.toString());
+
+      if (mime === "image/svg+xml") {
+        const _file = await this.root.nativeFile(file.text);
+        await cache.put(
+          dest,
+          new Response(_file, {
+            headers,
+            status: 200,
+          })
+        );
+      } else {
+        headers.set("Content-Length", file.contents.byteLength.toString(10));
+
+        await cache.put(
+          dest,
+          new Response(
+            new Blob([file.contents], {
+              type: mime,
+            }),
+            { headers }
+          )
+        );
+      }
+
       outResults[i++] = dest;
     }
 
@@ -225,7 +246,7 @@ export class ESBuildPackage {
     return "/";
   }
 
-  async build(route: Route) {
+  async build(route: Route, signal: AbortSignal) {
     this.relativePath = route.absWorkingDirectory;
 
     const tsconfigFile = await this.root.nativeFile("tsconfig.json");
@@ -252,6 +273,7 @@ export class ESBuildPackage {
       plugins: [this.asPlugin()],
       write: false,
       splitting: true,
+      sourcemap: "external",
       define: {
         ...this.pkg.esbuild.define,
         "process.env.NODE_ENV": '"production"',
@@ -276,10 +298,11 @@ export class ESBuildPackage {
       nodePaths: ["/node_modules"],
       outdir: this.relativePath,
       bundle: true,
+      incremental: true,
     };
 
     try {
-      result = await build(config);
+      result = await esbuild.build(config);
     } catch (e) {
       const err = PackagerError.with(ErrorCode.buildFailed, e);
       err.build = this;
@@ -327,13 +350,7 @@ export class ESBuildPackage {
     return await this.root.nativeFile(location.file);
   }
 
-  resolveFile = async (opts: OnResolveArgs): Promise<OnResolveResult> => {
-    const moduleName = getModuleName(opts.path);
-
-    const isHTTP =
-      opts.path.startsWith("https://") || opts.path.startsWith("http://");
-
-    const ext = path.extname(opts.path);
+  async _resolveFile(opts: OnResolveArgs): Promise<OnResolveResult> {
     if (opts.path.startsWith("data:")) {
       return {
         path: opts.path,
@@ -345,33 +362,79 @@ export class ESBuildPackage {
       };
     }
 
-    if (opts.kind === "import-rule" && isHTTP) {
+    const nodeModulesIndex = opts.path.indexOf("node_modules/");
+    if (nodeModulesIndex > -1)
+      opts.path = opts.path.substring(
+        nodeModulesIndex + "node_modules/".length
+      );
+
+    const moduleName = getModuleName(opts.path);
+
+    const isHTTP =
+      opts.path.startsWith("https://") || opts.path.startsWith("http://");
+
+    const ext = path.extname(opts.path).substring(1);
+    const external =
+      !ext || ext === "tsx" || ext === "jsx" || ext === "js" || ext === "ts";
+
+    if ((opts.kind === "import-rule" || opts.kind === "url-token") && isHTTP) {
       return {
         path: opts.path,
         external: true,
+        pluginData: { kind: opts.kind },
         // external,
         // namespace: external ? undefined : "remote",
 
         // namespace: "esbuild-pkg",
       };
-    } else if (this.pkg.allDependencies.has(moduleName)) {
-      const external =
-        !ext || ext === "tsx" || ext === "jsx" || ext === "js" || ext === "ts";
+    } else if (
+      isHTTP &&
+      (opts.kind === "import-statement" || opts.kind === "dynamic-import")
+    ) {
       return {
-        path: `https://${host}/${this.pkg.allDependencies.get(
+        path: opts.path,
+        namespace: "file",
+        external: true,
+        pluginData: { kind: opts.kind },
+        // external,
+        // namespace: external ? undefined : "remote",
+
+        // namespace: "esbuild-pkg",
+      };
+    } else if (external && this.pkg.allDependencies.has(moduleName)) {
+      return {
+        path: `https://${jsHost}${this.pkg.allDependencies.get(
           moduleName
         )}${opts.path.substring(moduleName.length)}`,
         // namespace: "remote",
         external,
-        namespace: external ? undefined : "remote",
+        namespace: "remote",
+        // namespace: "esbuild-pkg",
+      };
+    } else if (!external && this.pkg.allDependencies.has(moduleName)) {
+      return {
+        path: `https://${cssHost}${this.pkg.allDependencies.get(
+          moduleName
+        )}${opts.path.substring(moduleName.length)}`,
+        // namespace: "remote",
+        external,
+        namespace: "remote",
+        // namespace: "esbuild-pkg",
+      };
+    } else if (opts.namespace === "remote" && external) {
+      return {
+        path: `https://${jsHost}/${opts.path}`,
+        namespace: "remote",
+        external,
+        // namespace: external ? undefined : "remote",
 
         // namespace: "esbuild-pkg",
       };
     } else if (opts.namespace === "remote") {
       return {
-        path: `https://${host}${opts.path}?min`,
+        path: `https://${external ? jsHost : cssHost}/${opts.path}`,
         namespace: "remote",
-        // external,
+        external,
         // namespace: external ? undefined : "remote",
 
         // namespace: "esbuild-pkg",
@@ -387,9 +450,9 @@ export class ESBuildPackage {
     }
 
     let doesExist = await this.root.exists(resolvedPath);
-    if (!doesExist && path.extname(resolvedPath) === "") {
+    if (!doesExist && ext === "") {
       let origPath = resolvedPath;
-      for (let extension of this.textExtensionsToTry) {
+      for (let extension of TSX_EXTENSIONS) {
         resolvedPath = origPath + extension;
         if (await this.root.exists(resolvedPath)) {
           return {
@@ -398,6 +461,14 @@ export class ESBuildPackage {
             // loader:
           };
         }
+      }
+
+      if (await this.root.exists(origPath + ".svg")) {
+        return {
+          path: resolvedPath,
+          external: false,
+          // namespace: "svgj",
+        };
       }
     }
 
@@ -415,11 +486,12 @@ export class ESBuildPackage {
       path: resolvedPath,
       external: false,
       // loader:
+      // namespace: resolvedPath.endsWith(".svg") ? "svgj" : opts.namespace,
     };
-  };
+  }
 
-  loadRemote = async (opts: OnLoadArgs): Promise<OnLoadResult> => {
-    verbose("[Load]", opts);
+  async _loadRemote(opts: OnLoadArgs): Promise<OnLoadResult> {
+    console.log("[Remote]", opts);
 
     switch (path.extname(opts.path)) {
       case ".png":
@@ -434,11 +506,12 @@ export class ESBuildPackage {
         return {
           contents: new Uint8Array(
             await (
-              await fetch(opts.path, {
+              (await caches.match(opts.path)) ||
+              (await fetch(opts.path, {
                 cache: "default",
                 credentials: "omit",
                 keepalive: true,
-              })
+              }))
             ).arrayBuffer()
           ),
 
@@ -448,24 +521,25 @@ export class ESBuildPackage {
       }
       default: {
         return {
-          contents: await (
-            await fetch(opts.path, {
-              cache: "default",
-              credentials: "omit",
-              keepalive: true,
-            })
-          ).text(),
+          contents: new Uint8Array(
+            await (
+              (await caches.match(opts.path)) ||
+              (await fetch(opts.path, {
+                cache: "default",
+                credentials: "omit",
+                keepalive: true,
+              }))
+            ).arrayBuffer()
+          ),
 
           // resolveDir: path.dirname(opts.path),
           loader: DEFAULT_LOADERS[path.extname(opts.path)] || "tsx",
         };
       }
     }
-  };
+  }
 
-  loadBinaryFile = async (opts: OnLoadArgs): Promise<OnLoadResult> => {};
-
-  loadFile = async (opts: OnLoadArgs): Promise<OnLoadResult> => {
+  async _loadFile(opts: OnLoadArgs): Promise<OnLoadResult> {
     verbose("[Load]", opts);
     if (opts.path.startsWith("data:")) {
       return {
@@ -476,35 +550,99 @@ export class ESBuildPackage {
       };
     }
 
-    // Use static folder for files
-    if (
-      opts.namespace === "file" ||
-      Mime.getType(path.extname(opts.path))?.includes("image")
-    ) {
-      return {
-        contents: new Uint8Array(await this.root.readFileBinary(opts.path)),
-        loader: "default",
-      };
+    const file = await this.root.nativeFile(opts.path);
+    const ext = path.extname(file.name);
+    const kind: ImportKind = opts.pluginData?.kind;
+
+    switch (ext) {
+      case ".svg": {
+        if (kind === "dynamic-import" || kind === "import-statement") {
+          return {
+            contents: renderSVG(
+              await file.text(),
+              "ReactComponent",
+              "* as React",
+              `https://${jsHost}${this.pkg.allDependencies.get("react")}`
+            ),
+            loader: "jsx",
+          };
+        } else {
+          return {
+            contents: opts.path,
+            loader: "file",
+          };
+        }
+
+        break;
+      }
+
+      case "":
+      case ".":
+      case ".mjs":
+      case ".js":
+      case ".jsx":
+      case ".ts":
+      case ".tsx": {
+        let contents = await file.text();
+        if (
+          contents.includes("<") &&
+          (!REACT_IMPORT_REGEX.test(contents) || !contents.includes("React"))
+        ) {
+          contents = `import * as React from "react";\n${contents}`;
+        }
+
+        return {
+          contents,
+
+          // resolveDir: path.dirname(opts.path),
+          loader: "default",
+        };
+
+        break;
+      }
+
+      case ".css":
+      case ".json": {
+        return {
+          contents: new Uint8Array(await file.arrayBuffer()),
+          loader: "default",
+        };
+        break;
+      }
+
+      default: {
+        return {
+          contents: new Uint8Array(await file.arrayBuffer()),
+          loader: "file",
+        };
+        break;
+      }
     }
+  }
 
+  async _loadSVGFile(opts: OnLoadArgs): Promise<OnLoadResult> {
     return {
-      contents: await this.root.readFileText(opts.path),
-
-      // resolveDir: path.dirname(opts.path),
-      loader: "default",
+      contents: renderSVG(await this.root.readFileText(opts.path)),
+      loader: "jsx",
     };
-  };
+  }
+  resolveFile = (opts: OnResolveArgs) => this._resolveFile(opts);
+  loadFile = (opts: OnLoadArgs) => this._loadFile(opts);
+  loadRemote = (opts: OnLoadArgs) => this._loadRemote(opts);
+  loadSVGFile = (opts: OnLoadArgs) => this._loadSVGFile(opts);
 
   asPlugin() {
     const resolveFile = this.resolveFile;
     const loadFile = this.loadFile;
     const loadRemote = this.loadRemote;
+    const loadSVGFile = this.loadSVGFile;
     return {
       name: ESBuildPackage.pluginName,
       setup(build) {
         build.onResolve({ filter: /.*/ }, resolveFile);
         build.onLoad({ filter: /.*/, namespace: "remote" }, loadRemote);
         build.onLoad({ filter: /.*/ }, loadFile);
+        build.onLoad({ filter: /\.svg$/, namespace: "svgj" }, loadSVGFile);
       },
     } as Plugin;
   }

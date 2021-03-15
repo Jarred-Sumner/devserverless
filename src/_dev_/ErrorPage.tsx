@@ -89,11 +89,9 @@ async function renderESBuildError(
   <div class="__DevServer__Error">
   <div class="__DevServer__Error-text ${
     !error.location ? "__DevServer__Error-text--no-location" : ""
-  }">${error.text
-    .replace("[devserverless]", "")
-    .trim()}<span class="__DevServer__Error-text-number">${
-    index + 1
-  }</span></div>
+  }">${
+    error.text?.replace("[devserverless]", "")?.trim() ?? "Error"
+  }<span class="__DevServer__Error-text-number">${index + 1}</span></div>
 `;
 
   let lines: string[];
@@ -103,7 +101,7 @@ async function renderESBuildError(
       try {
         let file = await build.getFileForLocation(error.location);
         if (file) {
-          lines = (await file.text()).split("\n");
+          lines = escape(await file.text()).split("\n");
         }
       } catch (exception) {
         console.error(exception);
@@ -211,17 +209,17 @@ export async function buildError(error: PackagerError) {
         ${errorText}
 
         <div class="__DevServer__ErrorPage-footer">
-        <div>
-          ${new Intl.DateTimeFormat(["lookup"], {
-            dateStyle: "short",
-            timeStyle: "long",
-          }).format(new Date())}
-          </div>
+            <div>
+            ${new Intl.DateTimeFormat(["lookup"], {
+              dateStyle: "short",
+              timeStyle: "long",
+            }).format(new Date())}
+            </div>
 
-          <div>
-          ${getPackageID()}
+            <div>
+            ${getPackageID()}
+            </div>
           </div>
-        </div>
       </div>
       <a class="__DevServer__ErrorPage-footerText" target="_blank" href="/_dev_/config">Configure devserver</a>
     </div>`;
@@ -230,15 +228,15 @@ export async function buildError(error: PackagerError) {
     default: {
       return `<div class="__DevServer__ErrorPage">
         <div class="__DevServer__ErrorPage-modal">
-        <div class="__DevServer__ErrorPage-heading">
-          ${MESSAGE[error.code] || ErrorCode[error.code]} (${error.code})
-        </div>
-        <div class="__DevServer__ErrorPage-title">${error.name.replace(
-          "[devserverless] ",
-          ""
-        )}</div>
+          <div class="__DevServer__ErrorPage-heading">
+            ${MESSAGE[error.code] || ErrorCode[error.code]} (${error.code})
+          </div>
+          <div class="__DevServer__ErrorPage-title">${error.name.replace(
+            "[devserverless] ",
+            ""
+          )}</div>
 
-        <div class="__DevServer__ErrorPage-body">${error.message}</div>
+          <div class="__DevServer__ErrorPage-body">${error.message}</div>
         </div>
         <a class="__DevServer__ErrorPage-footerText" target="_blank" href="/_dev_/config">Configure devserver</a>
     </div>`;
