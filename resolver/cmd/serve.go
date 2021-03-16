@@ -17,7 +17,10 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
+	"github.com/jarred-sumner/devserverless/resolver"
+	"github.com/jarred-sumner/devserverless/resolver/internal/server"
 	"github.com/spf13/cobra"
 )
 
@@ -33,6 +36,13 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("serve called")
+		port, _ := cmd.Flags().GetUint("port")
+		resolver.LogV("Started server on port http://localhost:%d", port)
+
+		if err := server.StartServer(port); err != nil {
+			log.Fatalf("Error in ListenAndServe: %s", err)
+		}
+
 	},
 }
 
@@ -43,9 +53,9 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	serveCmd.PersistentFlags().Int("port", "", "A help for foo")
+	serveCmd.Flags().Uint("port", 8087, "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// serveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
 }

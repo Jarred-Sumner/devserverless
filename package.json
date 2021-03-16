@@ -13,7 +13,7 @@
     "move-jsfile": "cp prod/*.jsfile prod/_dev_/; rm prod/*.jsfile",
     "move": "pnpm move-jsurl; pnpm move-wasm;",
     "predeploy": "pnpm build-production && pnpm move && pnpm gzip",
-    "schema": "peechy --schema resolver/schema.kiwi --esm src/lib/lockfile.ts --ts src/lib/lockfile.ts --go resolver/lockfile/lockfile.go"
+    "schema": "peechy --schema resolver/schema.kiwi --esm src/lib/lockfile.js --ts src/lib/lockfile.ts --go resolver/lockfile/lockfile.go"
   },
   "author": "Hm",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "npm-package-arg": "^8.1.1",
     "p-limit": "^3.1.0",
     "path-browserify": "^1.0.1",
-    "peechy": "^0.2.2",
+    "peechy": "^0.2.3",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-portal": "^4.2.1",

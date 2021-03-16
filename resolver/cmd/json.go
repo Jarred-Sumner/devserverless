@@ -16,8 +16,11 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
+	"encoding/json"
+	"io/ioutil"
+	"path"
 
+	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	"github.com/spf13/cobra"
 )
 
@@ -32,12 +35,64 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("json called")
+		var pkgJsonPath string = "./package.json"
+		if len(args) > 0 {
+			pkgJsonPath = args[0]
+		}
+		pkgJsonPath = path.Clean(pkgJsonPath)
+		var err error
+
+		var jsonText []byte
+
+		jsonText, err = ioutil.ReadFile(pkgJsonPath)
+
+		if err != nil {
+			cmd.Println("An error occurred while reading " + pkgJsonPath)
+			cmd.PrintErr(err)
+		}
+
+		file, err := lockfile.NewJavascriptPackageManifestPartial(&jsonText, true)
+
+		if err != nil {
+			cmd.Println("An error occurred while parsing " + pkgJsonPath)
+			cmd.PrintErr(err)
+		}
+
+		if shouldPrint, _ := cmd.Flags().GetBool("print-request"); shouldPrint {
+			reqString, err := json.Marshal(&file)
+			cmd.Printf(string(reqString))
+
+			if err != nil {
+				cmd.Println("An error occurred while parsing " + pkgJsonPath)
+				cmd.PrintErr(err)
+			}
+		}
+
+		store := lockfile.NewMemoryPackageManifestStore()
+		deps, err := store.ResolveDependencies(&file, cmd.Context())
+
+		if err != nil {
+			cmd.Println("An error occurred while resolving " + pkgJsonPath)
+			cmd.PrintErr(err)
+			return
+		}
+
+		reqString, err := json.Marshal(&deps)
+
+		if err != nil {
+			cmd.Println("An error occurred while stringifying " + pkgJsonPath)
+			cmd.PrintErr(err)
+			return
+		}
+
+		cmd.Printf(string(reqString))
+
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(jsonCmd)
+	jsonCmd.Flags().Bool("print-request", false, "print a json version of the encoded & unresolved package.json file")
 
 	// Here you will define your flags and configuration settings.
 

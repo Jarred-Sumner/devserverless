@@ -1,11 +1,30 @@
-package Lockfile;
+package lockfile;
 
 smol PackageProvider {
   npm = 1;
   git = 2;
   https = 3;
   tgz = 4;
-  other = 5;
+  disk = 5;
+  other = 6;
+}
+
+smol VersionRange {
+  none = 1;
+  tilda = 2;
+  caret = 3;
+  complex = 4;
+}
+
+smol PackageResolutionStatus {
+  success = 1;
+  missingName = 2;
+  missingVersion = 3;
+  notFound = 4;
+  corruptPackage = 5;
+  rateLimit = 6;
+  invalidVersion = 7;
+  internal = 8;
 }
 
 smol ExportsType {
@@ -24,17 +43,12 @@ struct Version {
   int major;
   int minor;
   int patch;
+  VersionRange range;
   string pre;
   string build;
 }
 
 alias timestamp = string;
-
-message JavascriptPackageInput {
-  alphanumeric name = 1;
-  string version = 2;
-  RawDependencyList dependencies = 3;
-}
 
 struct RawDependencyList {
   uint count;
@@ -47,23 +61,43 @@ struct JavascriptPackageManifest {
 
   alphanumeric[] name;
   Version[] version;
-  PackageProvider[] providers;
+  PackageProvider provider;
 
   uint[] dependencies;
   uint[] dependenciesIndex;
 
   ExportsManifest exportsManifest;
   uint[] exportsManifestIndex;
+}
 
+struct ResolvedJavascriptPackageTag {
+  alphanumeric name;
+  alphanumeric fromVersion;
+  Version version;
+}
+
+struct JavascriptPackageManifestPartial {
+  alphanumeric name;
+  Version version;
+
+  PackageProvider provider;
+  PackageResolutionStatus status;
+  ExportsManifest exportsManifest;
+
+  alphanumeric[] dependencyNames;
+  alphanumeric[] dependencyVersions;
+
+  alphanumeric[] peerDependencyNames;
+  alphanumeric[] peerDependencyVersions;
+
+  alphanumeric[] devDependencyNames;
+  alphanumeric[] devDependencyVersions;
 }
 
 message JavascriptPackageRequest {
   string clientVersion = 1;
   alphanumeric name = 2;
-  RawDependencyList dependencies  = 3;
-  RawDependencyList optionalDependencies  = 4;
-  RawDependencyList devDependencies  = 5;
-  RawDependencyList peerDependencies  = 6;
+  JavascriptPackageManifestPartial manifest = 3;
 }
 
 enum ErrorCode {

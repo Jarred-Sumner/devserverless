@@ -15,7 +15,7 @@ dependencies:
   npm-package-arg: 8.1.1
   p-limit: 3.1.0
   path-browserify: 1.0.1
-  peechy: 0.2.2
+  peechy: 0.2.3
   react: 17.0.1
   react-dom: 17.0.1_react@17.0.1
   react-portal: 4.2.1_react@17.0.1
@@ -3689,11 +3689,11 @@ packages:
       node: '>=0.12'
     resolution:
       integrity: sha512-4Ejy1OPxi9f2tt1rRV7Go7zmfDQ+ZectEQz3VGUQhgq62HtIRPDyG/JtnwIxs6x3uNMwo2V7q1fMvKjb+Tnpqg==
-  /peechy/0.2.2:
+  /peechy/0.2.3:
     dev: false
     hasBin: true
     resolution:
-      integrity: sha512-yemrqqcc/M62z5aqq9HSUa4LiNG8xzMuL1BAfvHouTTpXHnhnWYKnTLPRQn0Y7o9kjE33SrfFA79BAXXR/qZBg==
+      integrity: sha512-/d4qNBHu5kh8Tbsbtvm+UiL6Q+JAmtIhds2IpgPaO1QKXbkkhCRuME6RwH2EHlW4UZiPQJ8lXMgNRkjQ2MjTkQ==
   /performance-now/2.1.0:
     dev: true
     resolution:
@@ -4994,7 +4994,7 @@ specifiers:
   npm-package-arg: ^8.1.1
   p-limit: ^3.1.0
   path-browserify: ^1.0.1
-  peechy: ^0.2.2
+  peechy: ^0.2.3
   react: ^17.0.1
   react-dom: ^17.0.1
   react-portal: ^4.2.1

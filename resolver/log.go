@@ -5,7 +5,7 @@ import (
 )
 
 func Error(format string, a ...interface{}) {
-	log.Fatalf(format, a)
+	log.Fatalf(format, a...)
 }
 
 func Line(message string) {
@@ -13,9 +13,9 @@ func Line(message string) {
 }
 
 func Log(format string, a ...interface{}) {
-	log.Printf(format, a)
+	log.Printf(format, a...)
 }
 
 func LogV(format string, a ...interface{}) {
-	log.Printf(format, a)
+	log.Printf(format, a...)
 }
