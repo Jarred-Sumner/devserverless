@@ -18,6 +18,7 @@ package cmd
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"path"
 
 	"github.com/jarred-sumner/devserverless/resolver/lockfile"
@@ -61,6 +62,8 @@ to quickly create a Cobra application.`,
 		if shouldPrint, _ := cmd.Flags().GetBool("print-request"); shouldPrint {
 			reqString, err := json.Marshal(&file)
 			cmd.Printf(string(reqString))
+
+			os.Exit(0)
 
 			if err != nil {
 				cmd.Println("An error occurred while parsing " + pkgJsonPath)

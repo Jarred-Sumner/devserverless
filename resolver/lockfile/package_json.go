@@ -3,9 +3,8 @@ package lockfile
 import (
 	"strings"
 
-	semver "github.com/blang/semver/v4"
+	semver "github.com/Jarred-Sumner/semver-1"
 	jsoniter "github.com/json-iterator/go"
-	"go.uber.org/zap"
 )
 
 var BlacklistedPackagePrefixes = [...]string{
@@ -141,7 +140,7 @@ func getDependencies(list map[string]interface{}, enableBlacklist bool) ([]strin
 			normalizedVersion = NormalizePackageVersionString(value.(string))
 
 			if NewVersionRange(normalizedVersion) == VersionRangeNone {
-				tag, err = semver.ParseTolerant(normalizedVersion)
+				tag, err = semver.NewVersion(normalizedVersion)
 
 				if err != nil {
 					values[i] = tag.String()
@@ -160,7 +159,7 @@ func getDependencies(list map[string]interface{}, enableBlacklist bool) ([]strin
 			normalizedVersion = NormalizePackageVersionString(value.(string))
 
 			if NewVersionRange(normalizedVersion) == VersionRangeNone {
-				tag, err = semver.ParseTolerant(normalizedVersion)
+				tag, err = semver.NewVersion(normalizedVersion)
 
 				if err != nil {
 					values[i] = tag.String()
@@ -183,52 +182,10 @@ func NewVersionRange(input string) VersionRange {
 		return VersionRangeCaret
 	} else if strings.HasPrefix(input, "~") {
 		return VersionRangeTilda
-	} else if strings.ContainsAny(input, "<>&|-+=/") {
+	} else if strings.ContainsAny(input, "<>&|-+*=/") {
 		return VersionRangeComplex
 	} else {
 		return VersionRangeNone
-	}
-}
-
-func (res *JavascriptPackageManifestPartial) FetchDependencies(logger *zap.Logger, enqueue func(name string, version string, logger *zap.Logger)) {
-	var i int
-	i = 0
-	var n int
-	var _name string
-	var _version string
-
-	if res.DependencyNames != nil && len(res.DependencyNames) > 0 {
-		n = len(res.DependencyNames)
-		i = 0
-		for i < n {
-			_name = res.DependencyNames[i]
-			_version = res.DependencyVersions[i]
-
-			enqueue(_name, _version, logger)
-			i++
-		}
-	}
-
-	if res.DevDependencyNames != nil && len(res.DevDependencyNames) > 0 {
-		n = len(res.DevDependencyNames)
-		i = 0
-		for i < n {
-			_name = res.DevDependencyNames[i]
-			_version = res.DevDependencyNames[i]
-			enqueue(_name, _version, logger)
-			i++
-		}
-	}
-
-	if res.PeerDependencyNames != nil && len(res.PeerDependencyVersions) > 0 {
-		n = len(res.PeerDependencyNames)
-		i = 0
-		for i < n {
-			_name = res.PeerDependencyNames[i]
-			_version = res.PeerDependencyVersions[i]
-			enqueue(_name, _version, logger)
-			i++
-		}
 	}
 }
 
@@ -240,9 +197,9 @@ func (p *JavascriptPackageManifestPartial) SetVersion(input string) {
 
 	normalizedVersion = p.Version.Range.Trim(normalizedVersion)
 
-	tag, err := semver.ParseTolerant(NormalizePackageVersionString(normalizedVersion))
+	tag, err := semver.NewVersion(NormalizePackageVersionString(normalizedVersion))
 	if err != nil {
-		p.Status = PackageResolutionStatusInvalidVersion
+		p.Version.Build = input
 		return
 	}
 
@@ -250,7 +207,7 @@ func (p *JavascriptPackageManifestPartial) SetVersion(input string) {
 	p.Version.Minor = int(tag.Minor)
 	p.Version.Patch = int(tag.Patch)
 	if len(p.Version.Pre) > 0 {
-		p.Version.Pre = tag.Pre[0].VersionStr
+		p.Version.Pre = tag.Pre
 	}
 	p.Version.Build = NormalizePackageVersionString(tag.String())
 }
