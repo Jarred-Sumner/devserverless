@@ -135,8 +135,6 @@ type uint32 = number;
     name: alphanumeric[];
     version: Version[];
     provider: PackageProvider;
-    dependencies: uint[];
-    dependenciesIndex: uint[];
     exportsManifest: ExportsManifest;
     exportsManifestIndex: uint[];
   }

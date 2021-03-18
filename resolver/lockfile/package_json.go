@@ -16,6 +16,35 @@ var BlacklistedPackagePrefixes = [...]string{
 	"webpack",
 }
 
+func NewJavascriptPackageManifestPartialFromNameVersion(name string, version string, enableBlacklist bool) JavascriptPackageManifestPartial {
+	return JavascriptPackageManifestPartial{
+		Name: "temp",
+		Version: Version{
+			Major: 0,
+			Minor: 0,
+			Patch: 0,
+			Range: VersionRangeNone,
+			Build: "",
+		},
+		Provider:           PackageProviderDisk,
+		Status:             PackageResolutionStatusSuccess,
+		DependencyNames:    []string{name},
+		DependencyVersions: []string{version},
+		// ExportsManifest: ExportsManifest{
+		// 	Source:      []string{},
+		// 	Destination: []string{},
+		// 	ExportType:  []ExportsType{},
+		// },
+		// DependencyNames:        []string{},
+		// DependencyVersions:     []string{},
+		// PeerDependencyNames:    []string{},
+		// PeerDependencyVersions: []string{},
+		// DevDependencyNames:     []string{},
+		// DevDependencyVersions:  []string{},
+	}
+
+}
+
 func NewJavascriptPackageManifestPartial(body *[]byte, enableBlacklist bool) (JavascriptPackageManifestPartial, error) {
 	var file map[string]interface{}
 

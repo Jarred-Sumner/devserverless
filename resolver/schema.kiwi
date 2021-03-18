@@ -63,9 +63,6 @@ struct JavascriptPackageManifest {
   Version[] version;
   PackageProvider provider;
 
-  uint[] dependencies;
-  uint[] dependenciesIndex;
-
   ExportsManifest exportsManifest;
   uint[] exportsManifestIndex;
 }

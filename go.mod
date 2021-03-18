@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/Jarred-Sumner/semver-1 v1.4.3-0.20210317034415-30d4bca5f835
 	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fasthttp/router v1.3.9
 	github.com/fatih/color v1.10.0
@@ -13,6 +14,7 @@ require (
 	github.com/jarred-sumner/semver-1 v1.5.0
 	github.com/json-iterator/go v1.1.10
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/savsgio/atreugo/v11 v11.6.3 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0 // indirect
