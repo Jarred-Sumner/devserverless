@@ -7,6 +7,7 @@ require (
 	github.com/atreugo/cors v1.0.4 // indirect
 	github.com/cespare/xxhash v1.1.0
 	github.com/davecgh/go-spew v1.1.1
+	github.com/dgraph-io/ristretto v0.0.3 // indirect
 	github.com/fatih/color v1.10.0
 	github.com/gammazero/workerpool v1.1.1
 	github.com/jarred-sumner/peechy v0.0.0-20210315024149-faf1f51b095f

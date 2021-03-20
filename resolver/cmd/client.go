@@ -58,7 +58,7 @@ to quickly create a Cobra application.`,
 			outPathLock = args[0]
 		}
 
-		start := time.Now()
+		// start := time.Now()
 
 		asJSON, _ := cmd.Flags().GetBool("json")
 
@@ -211,6 +211,8 @@ to quickly create a Cobra application.`,
 			os.Exit(1)
 		}
 
+		cmd.Printf("🔗 Saved import map to %s\n", outPathImport)
+
 		err = os.WriteFile(outPathLock, manifestBuffer.Slice(), os.ModePerm)
 
 		if err != nil {
@@ -218,7 +220,7 @@ to quickly create a Cobra application.`,
 			cmd.PrintErr(err)
 			os.Exit(1)
 		} else {
-			cmd.Printf("💾 Saved lockfile to %s\n", outPathLock)
+			cmd.Printf("💾 Saved lockfile (%d deps, %d modules) to %s\n", manifest.Count, len(manifest.ExportsManifest.Source)+int(manifest.Count), outPathLock)
 		}
 
 		if asJSON {
@@ -230,7 +232,7 @@ to quickly create a Cobra application.`,
 		}
 
 		if err == nil {
-			cmd.Printf("✅ Completed in %s", time.Since(start))
+			// cmd.Printf("✅ Completed in %s", time.Since(start).Truncate(time.Microsecond))
 		}
 
 	},

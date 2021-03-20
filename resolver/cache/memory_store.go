@@ -6,13 +6,12 @@ import (
 	"github.com/gammazero/workerpool"
 	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	runner "github.com/jarred-sumner/devserverless/resolver/runner"
-	cmap "github.com/orcaman/concurrent-map"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
 )
 
 type MemoryPackageAliasCache struct {
-	Store cmap.ConcurrentMap
+	Store lockfile.StringMap
 }
 
 type MemoryPackageManifestCache struct {
@@ -65,7 +64,7 @@ func NewMemoryPackageManifestStore() lockfile.PackageManifestStore {
 	}
 
 	aliases := MemoryPackageAliasCache{
-		Store: cmap.New(),
+		Store: lockfile.StringMap{},
 	}
 
 	logger, _ := zap.NewDevelopment()
@@ -102,9 +101,9 @@ func NewMemoryPackageManifestStore() lockfile.PackageManifestStore {
 }
 
 func (m *MemoryPackageAliasCache) Get(name string) (string, bool) {
-	v, e := m.Store.Get(name)
+	v, e := m.Store.Load(name)
 	if e {
-		return v.(string), e
+		return v, e
 	} else {
 		return "", e
 	}
@@ -112,5 +111,5 @@ func (m *MemoryPackageAliasCache) Get(name string) (string, bool) {
 }
 
 func (m *MemoryPackageAliasCache) Put(name string, alias string) {
-	m.Store.Set(name, alias)
+	m.Store.Store(name, alias)
 }

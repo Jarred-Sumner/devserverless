@@ -4,8 +4,11 @@ import { ByteBuffer } from "peechy";
 import { PackagerError } from "src/lib/ESBuildPackage";
 import { ErrorCode } from "src/lib/ErrorCode";
 import { normalize } from "src/lib/router/glob-slash";
+import { titleLog } from "src/lib/FancyLogger";
+import { formatMillis, formatNumber } from "src/lib/formatNumber";
 
 const API_SERVER_HOST = "pkgs.example.d";
+
 let importMapCache: Cache;
 export async function getImportMapCache() {
   if (!importMapCache) {
@@ -77,7 +80,8 @@ export async function getLocalImportMap(hash: string) {
 }
 
 export async function fetchPackageManifest(hash: string, buffer: Uint8Array) {
-  console.log("Running the web version of `npm install`");
+  titleLog("📦   Resolving dependencies...");
+  const startTime = Date.now();
   const resp = await fetch(`${API_SERVER_HOST}/pkgs/${hash}`, {
     mode: "cors",
     redirect: "follow",
@@ -96,6 +100,19 @@ export async function fetchPackageManifest(hash: string, buffer: Uint8Array) {
     const bb = new ByteBuffer(new Uint8Array(buffer));
 
     const pkg = lockfile.decodeJavascriptPackageResponse(bb);
+
+    if (pkg.result.count) {
+      const timeSpent = Date.now() - startTime;
+      let emoji = "✅";
+      if (timeSpent < 100) {
+        emoji = "🔥";
+      }
+      successLog(
+        `${emoji}   Resolved ${formatNumber(
+          pkg.result.count
+        )} dependencies in ${formatMillis(timeSpent)}`
+      );
+    }
 
     return pkg;
   } else {
