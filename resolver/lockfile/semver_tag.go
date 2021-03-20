@@ -1,6 +1,6 @@
 package lockfile
 
-// import semver "github.com/Jarred-Sumner/semver-1"
+// import semver "github.com/Jarred-Sumner/semver/v4"
 
 // type SemverTag struct {
 // 	Version

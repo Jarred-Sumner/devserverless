@@ -2,13 +2,18 @@ import type { BuildOptions } from "esbuild";
 import { cloneDeep } from "lodash-es";
 import * as semver from "semver";
 import * as path from "path";
+import xxhash from "xxhash-wasm";
 export interface RunConfiguration {
   // If you pass it a filename ending in .html, all navigation routes will go to that file.
   // If you pass it a folder, it will route based on the filesystem, Next.js-style.
   router: string;
+  dependencies: string;
 
   isRouterUnset: boolean;
+  isDependenciesUnset: boolean;
 }
+
+const DEFAULT_DEPENDENCIES_HOST = "https://cdn.skypack.dev/";
 
 const AUTO_DEPENDENCIES = [
   "react",
@@ -59,26 +64,21 @@ export class PackageJSON {
       const deps = this[depKey];
       if (deps) {
         for (let moduleId in deps) {
-          let version = deps[moduleId];
-          version = version.replace(/\^/gm, "");
-
-          if (!semver.clean(version, false)) {
-            this.allDependencies.set(moduleId, moduleId);
-          } else {
-            this.allDependencies.set(
-              moduleId,
-              `${moduleId}@${semver.clean(version, false)}`
-            );
-          }
+          this.inputDependencies.set(moduleId, moduleId);
         }
       }
     }
 
     for (let autodep of AUTO_DEPENDENCIES) {
-      if (!this.allDependencies.has(autodep)) {
-        this.allDependencies.set(autodep, autodep);
+      if (!this.inputDependencies.has(autodep)) {
+        this.inputDependencies.set(autodep, autodep);
       }
     }
+
+    // Sort the dependencies so that hashing can be more reliable
+    this.inputDependencies = new Map(
+      [...this.inputDependencies.entries()].sort()
+    );
   }
 
   static parse(json: string, ClassName = PackageJSON) {
@@ -87,7 +87,11 @@ export class PackageJSON {
     return pkg;
   }
 
-  allDependencies = new Map();
+  inputDependencies = new Map();
+
+  async generateHash() {
+    return (await xxhash()).h64(JSON.stringify(this.inputDependencies));
+  }
 
   process(json: string, ClassName = PackageJSON) {
     const parsed = JSON.parse(json);
@@ -110,6 +114,14 @@ export class PackageJSON {
       run.router = "";
     }
 
+    if (typeof run.dependencies === "string" && run.dependencies) {
+      run.dependencies = run.dependencies.toLowerCase().trim();
+      run.isDependenciesUnset = false;
+    } else {
+      run.dependencies = DEFAULT_DEPENDENCIES_HOST;
+      run.isDependenciesUnset = true;
+    }
+
     return run;
   }
 
@@ -117,7 +129,8 @@ export class PackageJSON {
     const json = cloneDeep(this);
 
     delete json.run.isRouterUnset;
-    delete json.allDependencies;
+    delete json.run.isDependenciesUnset;
+    delete json.inputDependencies;
 
     return json;
   }

@@ -10,6 +10,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 	"go.uber.org/zap"
 
+	"github.com/atreugo/cors"
 	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	"github.com/jarred-sumner/peechy/buffer"
 )
@@ -73,7 +74,6 @@ func ResolvePartial(partial lockfile.JavascriptPackageManifestPartial, ctx *atre
 		} else {
 			ctx.Success(string(AcceptEncodingJSON), bytes)
 		}
-
 	}
 
 	return nil
@@ -194,5 +194,13 @@ func StartServer(port uint, store *lockfile.PackageManifestStore) error {
 	server.GET("/npm/{namespace}@{name}/{packageVersion:*}", NpmPackage)
 	server.POST("/pkg/{hash}", PackagePartial)
 
+	server.UseAfter(cors.New(cors.Config{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS", "HEAD"},
+		AllowedHeaders:   []string{"X-Origin", "Content-Type"},
+		AllowCredentials: false,
+		AllowMaxAge:      1728000,
+		ExposedHeaders:   []string{"Content-Type", "Content-Length", "X-Origin"},
+	}))
 	return server.ListenAndServe()
 }

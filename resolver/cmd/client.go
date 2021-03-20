@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/cespare/xxhash"
+	"github.com/jarred-sumner/devserverless/config"
 	"github.com/jarred-sumner/devserverless/resolver/cache"
 	"github.com/jarred-sumner/devserverless/resolver/internal/server"
 	"github.com/jarred-sumner/devserverless/resolver/lockfile"
@@ -50,9 +51,11 @@ to quickly create a Cobra application.`,
 		pkgJsonPath = path.Clean(pkgJsonPath)
 		var err error
 
-		var outPath = "./package-browser.lock"
+		var outPathBase = "./package-browser"
+		var outPathImport = "./package.importmap"
+		var outPathLock = outPathBase + ".lock"
 		if len(args) > 0 {
-			outPath = args[0]
+			outPathLock = args[0]
 		}
 
 		start := time.Now()
@@ -68,7 +71,7 @@ to quickly create a Cobra application.`,
 			cmd.PrintErr(err)
 		}
 
-		file, err := lockfile.NewJavascriptPackageManifestPartial(&jsonText, true)
+		file, err := lockfile.NewJavascriptPackageManifestPartial(&jsonText, config.BLACKLIST_PACKAGES)
 
 		if err != nil {
 			cmd.Println("An error occurred while parsing " + pkgJsonPath)
@@ -76,11 +79,11 @@ to quickly create a Cobra application.`,
 		}
 		version := "1.0.0"
 		name := file.Name
-		var err error
 		var manifest lockfile.JavascriptPackageManifest
 
 		host, _ := cmd.Flags().GetString("cache")
-		var cacheType CacheType
+		var cacheType cache.CacheType
+		importMapHost, _ := cmd.Flags().GetString("to")
 
 		if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
 			cacheType = cache.CacheTypeRemote
@@ -93,18 +96,24 @@ to quickly create a Cobra application.`,
 		switch cacheType {
 		case cache.CacheTypeRemote:
 			{
+				denylist := false
 				req := lockfile.JavascriptPackageRequest{
-					Manifest:      &file,
-					ClientVersion: &version,
-					Name:          &name,
+					Manifest:       &file,
+					ClientVersion:  &version,
+					Name:           &name,
+					EnableDenylist: &denylist,
 				}
 
 				reqBuffer := buffer.Buffer{
-					Bytes: &bytebufferpool.ByteBuffer{},
+					Bytes: &bytebufferpool.ByteBuffer{
+						B: make([]byte, 0, 100),
+					},
 				}
 
 				req.Encode(&reqBuffer)
+
 				httpReq := fasthttp.AcquireRequest()
+				httpReq.SetBody(reqBuffer.Slice())
 				httpReq.Header.SetMethod("POST")
 				httpResp := fasthttp.AcquireResponse()
 				defer fasthttp.ReleaseRequest(httpReq)
@@ -113,16 +122,11 @@ to quickly create a Cobra application.`,
 				hash := xxhash.Sum64(reqBuffer.Bytes.B)
 
 				httpReq.SetRequestURI(fmt.Sprintf("%s/pkg/%d", host, hash))
-				cmd.Printf("> POST %s", httpReq.URI().String())
+				cmd.Printf("> POST %s (%d bytes) \n", httpReq.URI().String(), reqBuffer.Offset)
 				httpReq.Header.Add("Content-Type", string(server.AcceptEncodingBinary))
 				fasthttp.DoDeadline(httpReq, httpResp, time.Now().Add(time.Second*30))
 				statusCode := httpResp.StatusCode()
-				cmd.Printf("< Status: %d", statusCode)
-
-				if statusCode != 200 {
-					cmd.Printf("<%s> [ERR]: %s", statusCode)
-					return
-				}
+				cmd.Printf("< Status: %d\n", statusCode)
 
 				encoding := string(httpResp.Header.Peek(fasthttp.HeaderContentEncoding))
 				var body []byte
@@ -140,6 +144,11 @@ to quickly create a Cobra application.`,
 					{
 						body = httpResp.Body()
 					}
+				}
+
+				if statusCode != 200 {
+					cmd.Printf("<%d> [ERR]: %s", statusCode, httpResp.Body())
+					return
 				}
 
 				var decoder buffer.Buffer
@@ -165,7 +174,7 @@ to quickly create a Cobra application.`,
 			}
 		case cache.CacheTypeNone:
 			{
-				store := lockfile.NewMemoryPackageManifestStore()
+				store := cache.NewMemoryPackageManifestStore()
 				manifest, err = store.ResolveDependencies(&file, cmd.Context())
 
 				if err != nil {
@@ -175,13 +184,55 @@ to quickly create a Cobra application.`,
 			}
 		}
 
+		var importBuffer []byte
+
+		importBuffer, err = lockfile.NewImportMap(&manifest, importMapHost)
+
+		if err != nil {
+			cmd.Printf("<%d> [ERR]: %s\n", lockfile.ErrorCodeGeneric, "Failed to generate import map")
+			os.Exit(1)
+		}
+
+		err = os.WriteFile(outPathImport, importBuffer, os.ModePerm)
+
+		if err != nil {
+			cmd.Printf("<%d> [ERR]: %s\n", lockfile.ErrorCodeGeneric, "Failed to write import map")
+			os.Exit(1)
+		}
+
+		manifestBuffer := buffer.Buffer{
+			Bytes: bytebufferpool.Get(),
+		}
+
+		err = manifest.Encode(&manifestBuffer)
+
+		if err != nil {
+			cmd.Printf("<%d> [ERR]: %s\n", lockfile.ErrorCodeGeneric, "Encoding error")
+			os.Exit(1)
+		}
+
+		err = os.WriteFile(outPathLock, manifestBuffer.Slice(), os.ModePerm)
+
+		if err != nil {
+			cmd.Printf("<%d> [ERR]: Failed to save to %s\n", lockfile.ErrorCodeGeneric, outPathLock)
+			cmd.PrintErr(err)
+			os.Exit(1)
+		} else {
+			cmd.Printf("💾 Saved lockfile to %s\n", outPathLock)
+		}
+
 		if asJSON {
 			json, err := jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(manifest)
 			if err != nil {
-				cmd.Printf("<%d> [ERR]: %s", lockfile.ErrorCodeGeneric, "Failed to decode as json")
+				cmd.Printf("<%d> [ERR]: %s\n", lockfile.ErrorCodeGeneric, "Failed to generate json")
 			}
-			os.WriteFile(outPath, json, os.ModePerm)
+			os.WriteFile(outPathLock+".json", formatJSON(json), os.ModePerm)
 		}
+
+		if err == nil {
+			cmd.Printf("✅ Completed in %s", time.Since(start))
+		}
+
 	},
 }
 
@@ -199,7 +250,7 @@ func init() {
 	clientCmd.Flags().BoolP("json", "j", true, "Write json version of lockfile to disk")
 	clientCmd.Flags().BoolP("write", "w", true, "Write binary version of lockfile to disk")
 	clientCmd.Flags().StringP("package", "p", "./package.json", "Path to package.json file")
-	clientCmd.Flags().StringP("to", "h", "https://jspm.io", "If its a local file path, download & extract tarballs. If its a remote file path, use an import map.")
+	clientCmd.Flags().StringP("to", "t", "https://ga.jspm.io/npm:", "If its a local file path, download & extract tarballs. If its a remote file path, use an import map.")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

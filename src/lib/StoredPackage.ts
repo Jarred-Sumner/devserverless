@@ -17,6 +17,7 @@ export interface StoredPackageRecord {
   handle: FileSystemDirectoryHandle;
   staticHandle: FileSystemDirectoryHandle;
   routerType: RouterType;
+  storedDependenciesHash?: string;
 }
 
 export class StoredPackage {
@@ -27,6 +28,8 @@ export class StoredPackage {
   static: NativeFS;
   root: NativeFS;
   routerType: RouterType = RouterType.unknown;
+  dependenciesHash: string;
+  storedDependenciesHash: string;
   pkg: PackageJSONFile;
   router: SinglePageAppRouter | FilesystemRouter;
 
@@ -36,6 +39,8 @@ export class StoredPackage {
       lastBuild: this.lastBuild || null,
       handle: this.handle,
       staticHandle: this.staticHandle,
+      storedDependenciesHash:
+        this.dependenciesHash || this.storedDependenciesHash,
       routerType: this.routerType,
     } as StoredPackageRecord;
   }
@@ -109,6 +114,8 @@ export class StoredPackage {
     }
 
     this.pkg = await PackageJSONFile.fromHandle(packageJSONFileHandle);
+
+    this.dependenciesHash = await this.pkg.generateHash();
   }
 
   loadConfig() {}

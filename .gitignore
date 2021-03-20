@@ -3,3 +3,10 @@ node_modules
 .vercel
 dist
 prod
+*.zip
+*.importmap
+*.gz
+*.lock
+*.lock.json
+log.txt
+/main

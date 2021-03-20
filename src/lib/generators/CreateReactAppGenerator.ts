@@ -45,7 +45,7 @@ export class CreateReactAppGenerator {
     dir: FileSystemDirectoryHandle,
     pkgJSON: PackageJSONFile
   ) {
-    if (!pkgJSON.allDependencies.has("react-scripts")) {
+    if (!pkgJSON.inputDependencies.has("react-scripts")) {
       return false;
     }
 
@@ -170,7 +170,6 @@ export class CreateReactAppGenerator {
 
   async saveToPackageJSON(save: string, pkg: PackageJSONFile) {
     pkg.run = {
-      isRouterUnset: false,
       router: save,
       routerGenerator: "create-react-app",
     };

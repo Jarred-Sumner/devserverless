@@ -21,6 +21,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/jarred-sumner/devserverless/config"
+	"github.com/jarred-sumner/devserverless/resolver/cache"
 	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	"github.com/spf13/cobra"
 )
@@ -52,7 +54,7 @@ to quickly create a Cobra application.`,
 			cmd.PrintErr(err)
 		}
 
-		file, err := lockfile.NewJavascriptPackageManifestPartial(&jsonText, true)
+		file, err := lockfile.NewJavascriptPackageManifestPartial(&jsonText, config.BLACKLIST_PACKAGES)
 
 		if err != nil {
 			cmd.Println("An error occurred while parsing " + pkgJsonPath)
@@ -71,7 +73,7 @@ to quickly create a Cobra application.`,
 			}
 		}
 
-		store := lockfile.NewMemoryPackageManifestStore()
+		store := cache.NewMemoryPackageManifestStore()
 		deps, err := store.ResolveDependencies(&file, cmd.Context())
 
 		if err != nil {

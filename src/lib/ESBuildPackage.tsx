@@ -401,9 +401,9 @@ export class ESBuildPackage {
 
         // namespace: "esbuild-pkg",
       };
-    } else if (external && this.pkg.allDependencies.has(moduleName)) {
+    } else if (external && this.pkg.inputDependencies.has(moduleName)) {
       return {
-        path: `https://${jsHost}${this.pkg.allDependencies.get(
+        path: `https://${jsHost}${this.pkg.inputDependencies.get(
           moduleName
         )}${opts.path.substring(moduleName.length)}`,
         // namespace: "remote",
@@ -411,9 +411,9 @@ export class ESBuildPackage {
         namespace: "remote",
         // namespace: "esbuild-pkg",
       };
-    } else if (!external && this.pkg.allDependencies.has(moduleName)) {
+    } else if (!external && this.pkg.inputDependencies.has(moduleName)) {
       return {
-        path: `https://${cssHost}${this.pkg.allDependencies.get(
+        path: `https://${cssHost}${this.pkg.inputDependencies.get(
           moduleName
         )}${opts.path.substring(moduleName.length)}`,
         // namespace: "remote",
@@ -562,7 +562,7 @@ export class ESBuildPackage {
               await file.text(),
               "ReactComponent",
               "* as React",
-              `https://${jsHost}${this.pkg.allDependencies.get("react")}`
+              `https://${jsHost}${this.pkg.inputDependencies.get("react")}`
             ),
             loader: "jsx",
           };

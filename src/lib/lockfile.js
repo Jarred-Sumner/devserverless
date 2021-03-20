@@ -82,26 +82,45 @@ const PackageResolutionStatusKeys = {
   "invalidVersion": "invalidVersion",
   "internal": "internal"
 };
-const ExportsType = {
+const BareField = {
   "1": 1,
   "2": 2,
   "3": 3,
-  "commonJs": 1,
-  "esModule": 2,
-  "browser": 3
+  "4": 4,
+  "5": 5,
+  "6": 6,
+  "7": 7,
+  "otherField": 1,
+  "moduleField": 2,
+  "browserField": 3,
+  "jsdelivrField": 4,
+  "mainField": 5,
+  "exportsField": 6,
+  "guessedField": 7
 };
-const ExportsTypeKeys = {
-  "1": "commonJs",
-  "2": "esModule",
-  "3": "browser",
-  "commonJs": "commonJs",
-  "esModule": "esModule",
-  "browser": "browser"
+const BareFieldKeys = {
+  "1": "otherField",
+  "2": "moduleField",
+  "3": "browserField",
+  "4": "jsdelivrField",
+  "5": "mainField",
+  "6": "exportsField",
+  "7": "guessedField",
+  "otherField": "otherField",
+  "moduleField": "moduleField",
+  "browserField": "browserField",
+  "jsdelivrField": "jsdelivrField",
+  "mainField": "mainField",
+  "exportsField": "exportsField",
+  "guessedField": "guessedField"
 };
 
 function decodeExportsManifest(bb) {
   var result = {};
 
+  var length = bb.readVarUint();
+  var values = result["bare"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readAlphanumeric();
   var length = bb.readVarUint();
   var values = result["source"] = Array(length);
   for (var i = 0; i < length; i++) values[i] = bb.readAlphanumeric();
@@ -109,12 +128,24 @@ function decodeExportsManifest(bb) {
   var values = result["destination"] = Array(length);
   for (var i = 0; i < length; i++) values[i] = bb.readAlphanumeric();
   var length = bb.readVarUint();
-  var values = result["exportType"] = Array(length);
-  for (var i = 0; i < length; i++) values[i] = ExportsType[bb.readByte()];
+  var values = result["bareField"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = BareField[bb.readByte()];
   return result;
 }
 
 function encodeExportsManifest(message, bb) {
+
+  var value = message["bare"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeAlphanumeric(value);
+    }
+  } else {
+    throw new Error("Missing required field \"bare\"");
+  }
 
   var value = message["source"];
   if (value != null) {
@@ -140,18 +171,76 @@ function encodeExportsManifest(message, bb) {
     throw new Error("Missing required field \"destination\"");
   }
 
-  var value = message["exportType"];
+  var value = message["bareField"];
   if (value != null) {
     var values = value, n = values.length;
     bb.writeVarUint(n);
     for (var i = 0; i < n; i++) {
       value = values[i];
-      var encoded = ExportsType[value];
-if (encoded === void 0) throw new Error("Invalid value " + JSON.stringify(value) + " for enum \"ExportsType\"");
+      var encoded = BareField[value];
+if (encoded === void 0) throw new Error("Invalid value " + JSON.stringify(value) + " for enum \"BareField\"");
 bb.writeByte(encoded);
     }
   } else {
-    throw new Error("Missing required field \"exportType\"");
+    throw new Error("Missing required field \"bareField\"");
+  }
+
+}
+
+function decodeExportsManifestSingleton(bb) {
+  var result = {};
+
+  result["bare"] = bb.readAlphanumeric();
+  var length = bb.readVarUint();
+  var values = result["source"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readAlphanumeric();
+  var length = bb.readVarUint();
+  var values = result["destination"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readAlphanumeric();
+  result["bareField"] = BareField[bb.readByte()];
+  return result;
+}
+
+function encodeExportsManifestSingleton(message, bb) {
+
+  var value = message["bare"];
+  if (value != null) {
+    bb.writeAlphanumeric(value);
+  } else {
+    throw new Error("Missing required field \"bare\"");
+  }
+
+  var value = message["source"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeAlphanumeric(value);
+    }
+  } else {
+    throw new Error("Missing required field \"source\"");
+  }
+
+  var value = message["destination"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeAlphanumeric(value);
+    }
+  } else {
+    throw new Error("Missing required field \"destination\"");
+  }
+
+  var value = message["bareField"];
+  if (value != null) {
+    var encoded = BareField[value];
+if (encoded === void 0) throw new Error("Invalid value " + JSON.stringify(value) + " for enum \"BareField\"");
+bb.writeByte(encoded);
+  } else {
+    throw new Error("Missing required field \"bareField\"");
   }
 
 }
@@ -273,11 +362,17 @@ function decodeJavascriptPackageManifest(bb) {
   for (var i = 0; i < length; i++) values[i] = bb.readAlphanumeric();
   var length = bb.readVarUint();
   var values = result["version"] = Array(length);
-  for (var i = 0; i < length; i++) values[i] = decodeVersion(bb);
+  for (var i = 0; i < length; i++) values[i] = bb.readString();
+  var length = bb.readVarUint();
+  var values = result["dependencyIndex"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readVarUint();
   result["provider"] = PackageProvider[bb.readByte()];
   result["exportsManifest"] = decodeExportsManifest(bb);
   var length = bb.readVarUint();
   var values = result["exportsManifestIndex"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readVarUint();
+  var length = bb.readVarUint();
+  var values = result["dependencies"] = Array(length);
   for (var i = 0; i < length; i++) values[i] = bb.readVarUint();
   return result;
 }
@@ -309,10 +404,22 @@ function encodeJavascriptPackageManifest(message, bb) {
     bb.writeVarUint(n);
     for (var i = 0; i < n; i++) {
       value = values[i];
-      encodeVersion(value, bb);
+      bb.writeString(value);
     }
   } else {
     throw new Error("Missing required field \"version\"");
+  }
+
+  var value = message["dependencyIndex"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeVarUint(value);
+    }
+  } else {
+    throw new Error("Missing required field \"dependencyIndex\"");
   }
 
   var value = message["provider"];
@@ -341,6 +448,18 @@ bb.writeByte(encoded);
     }
   } else {
     throw new Error("Missing required field \"exportsManifestIndex\"");
+  }
+
+  var value = message["dependencies"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeVarUint(value);
+    }
+  } else {
+    throw new Error("Missing required field \"dependencies\"");
   }
 
 }
@@ -386,7 +505,7 @@ function decodeJavascriptPackageManifestPartial(bb) {
   result["version"] = decodeVersion(bb);
   result["provider"] = PackageProvider[bb.readByte()];
   result["status"] = PackageResolutionStatus[bb.readByte()];
-  result["exportsManifest"] = decodeExportsManifest(bb);
+  result["exportsManifest"] = decodeExportsManifestSingleton(bb);
   var length = bb.readVarUint();
   var values = result["dependencyNames"] = Array(length);
   for (var i = 0; i < length; i++) values[i] = bb.readAlphanumeric();
@@ -444,7 +563,7 @@ bb.writeByte(encoded);
 
   var value = message["exportsManifest"];
   if (value != null) {
-    encodeExportsManifest(value, bb);
+    encodeExportsManifestSingleton(value, bb);
   } else {
     throw new Error("Missing required field \"exportsManifest\"");
   }
@@ -540,6 +659,10 @@ function decodeJavascriptPackageRequest(bb) {
       break;
 
     case 3:
+      result["enableDenylist"] = !!bb.readByte();
+      break;
+
+    case 4:
       result["manifest"] = decodeJavascriptPackageManifestPartial(bb);
       break;
 
@@ -563,9 +686,15 @@ function encodeJavascriptPackageRequest(message, bb) {
     bb.writeAlphanumeric(value);
   }
 
-  var value = message["manifest"];
+  var value = message["enableDenylist"];
   if (value != null) {
     bb.writeVarUint(3);
+    bb.writeByte(value);
+  }
+
+  var value = message["manifest"];
+  if (value != null) {
+    bb.writeVarUint(4);
     encodeJavascriptPackageManifestPartial(value, bb);
   }
   bb.writeVarUint(0);
@@ -616,6 +745,10 @@ function decodeJavascriptPackageResponse(bb) {
       result["message"] = bb.readString();
       break;
 
+    case 5:
+      result["checksum"] = bb.readString();
+      break;
+
     default:
       throw new Error("Attempted to parse invalid message");
     }
@@ -649,6 +782,12 @@ bb.writeVarUint(encoded);
     bb.writeVarUint(4);
     bb.writeString(value);
   }
+
+  var value = message["checksum"];
+  if (value != null) {
+    bb.writeVarUint(5);
+    bb.writeString(value);
+  }
   bb.writeVarUint(0);
 
 }
@@ -659,10 +798,12 @@ export { VersionRange }
 export { VersionRangeKeys }
 export { PackageResolutionStatus }
 export { PackageResolutionStatusKeys }
-export { ExportsType }
-export { ExportsTypeKeys }
+export { BareField }
+export { BareFieldKeys }
 export { decodeExportsManifest }
 export { encodeExportsManifest }
+export { decodeExportsManifestSingleton }
+export { encodeExportsManifestSingleton }
 export { decodeVersion }
 export { encodeVersion }
 export { decodeRawDependencyList }

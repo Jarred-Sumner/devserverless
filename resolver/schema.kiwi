@@ -27,17 +27,31 @@ smol PackageResolutionStatus {
   internal = 8;
 }
 
-smol ExportsType {
-  commonJs = 1;
-  esModule = 2;
-  browser = 3;
+smol BareField {
+  otherField = 1;
+  moduleField = 2;
+  browserField = 3;
+  jsdelivrField = 4;
+  mainField = 5;
+  exportsField = 6;
+  guessedField = 7;
 }
 
 struct ExportsManifest {
+  alphanumeric[] bare;
   alphanumeric[] source;
   alphanumeric[] destination;
-  ExportsType[] exportType;
+  BareField[] bareField;
+
 }
+
+struct ExportsManifestSingleton {
+  alphanumeric bare;
+  alphanumeric[] source;
+  alphanumeric[] destination;
+  BareField bareField;
+}
+
 
 struct Version {
   int major;
@@ -60,11 +74,14 @@ struct JavascriptPackageManifest {
   uint count;
 
   alphanumeric[] name;
-  Version[] version;
+  string[] version;
+  uint[] dependencyIndex;
+
   PackageProvider provider;
 
   ExportsManifest exportsManifest;
   uint[] exportsManifestIndex;
+  uint[] dependencies;
 }
 
 struct ResolvedJavascriptPackageTag {
@@ -79,7 +96,7 @@ struct JavascriptPackageManifestPartial {
 
   PackageProvider provider;
   PackageResolutionStatus status;
-  ExportsManifest exportsManifest;
+  ExportsManifestSingleton exportsManifest;
 
   alphanumeric[] dependencyNames;
   alphanumeric[] dependencyVersions;
@@ -94,7 +111,8 @@ struct JavascriptPackageManifestPartial {
 message JavascriptPackageRequest {
   string clientVersion = 1;
   alphanumeric name = 2;
-  JavascriptPackageManifestPartial manifest = 3;
+  bool enableDenylist = 3;
+  JavascriptPackageManifestPartial manifest = 4;
 }
 
 enum ErrorCode {
@@ -109,4 +127,5 @@ message JavascriptPackageResponse {
   JavascriptPackageManifest result = 2;
   ErrorCode errorCode = 3;
   string message = 4;
+  string checksum = 5;
 }

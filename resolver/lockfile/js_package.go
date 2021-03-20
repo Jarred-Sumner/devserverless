@@ -2,22 +2,20 @@ package lockfile
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	semver "github.com/Jarred-Sumner/semver-1"
+	semver "github.com/Jarred-Sumner/semver/v4"
 	"github.com/gammazero/workerpool"
+	"github.com/jarred-sumner/devserverless/config"
 	runner "github.com/jarred-sumner/devserverless/resolver/runner"
-	"github.com/jarred-sumner/peechy/buffer"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/valyala/bytebufferpool"
 	"github.com/valyala/fasthttp"
-	"github.com/vmihailenco/msgpack/v5"
 	"go.uber.org/zap"
 )
 
@@ -37,98 +35,7 @@ type PackageAliasCache interface {
 	Put(name string, result string)
 }
 
-type MemoryPackageAliasCache struct {
-	Store *sync.Map
-}
-
-func (m *MemoryPackageAliasCache) Get(name string) (string, bool) {
-	v, e := m.Store.Load(name)
-	if e {
-		return v.(string), e
-	} else {
-		return "", e
-	}
-
-}
-
-func (m *MemoryPackageAliasCache) Put(name string, alias string) {
-	m.Store.Store(name, alias)
-}
-
-type JSDelivrPackageData struct {
-	Tags     map[string]string `json:"tags"`
-	Versions semver.Collection `json:"versions"`
-}
-
-type RawJSDelivrPackageData struct {
-	Tags     map[string]string `json:"tags"`
-	Versions []string          `json:"versions"`
-}
-
-func (p *JSDelivrPackageData) satisfying(version string) (string, error) {
-	if version == "*" {
-		version = "latest"
-	}
-	if len(p.Tags[version]) > 0 {
-		version = p.Tags[version]
-	}
-
-	vr := NewVersionRange(version)
-	var semverRange semver.Constraints
-	var parsedVersion semver.Version
-	var err error
-
-	switch vr {
-	case VersionRangeCaret:
-		{
-			semverRange, err = semver.NewConstraint(version)
-		}
-	case VersionRangeTilda:
-		{
-			semverRange, err = semver.NewConstraint(version)
-		}
-	case VersionRangeComplex:
-		{
-
-			semverRange, err = semver.NewConstraint(version)
-		}
-
-	case VersionRangeNone:
-		{
-			parsedVersion, err = semver.NewVersion(version)
-
-			for i := p.Versions.Len() - 1; i > -1; i-- {
-				if parsedVersion.Equal(&p.Versions[i]) {
-					return p.Versions[i].String(), err
-				}
-			}
-
-		}
-	default:
-		{
-			return version, nil
-		}
-	}
-
-	if err != nil {
-		return version, err
-	}
-
-	if vr > VersionRangeNone {
-		// Iterate through backwards because we want to find the latest satisfying version
-		for i := len(p.Versions) - 1; i > -1; i-- {
-			if semverRange.Check(&p.Versions[i]) {
-				return p.Versions[i].String(), err
-			}
-		}
-	}
-
-	return version, err
-}
-
-var JSDelivrMetadataFormatterString = "https://data.jsdelivr.com/v1/package/npm/%s"
-
-func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName string) (JSDelivrPackageData, error) {
+func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName string) (*JSDelivrPackageData, error) {
 	logger := store.Logger.With(zap.String("pkg", name))
 
 	req := fasthttp.AcquireRequest()
@@ -144,7 +51,7 @@ func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName 
 
 	// log.Println(fmt.Sprintf(packageJsonFormatterString, name, version))
 	var err error
-	err = store.jsdelivrClient.DoDeadline(req, resp, time.Now().Add(time.Second))
+	err = store.JSDelivrClient.DoDeadline(req, resp, time.Now().Add(time.Minute))
 
 	statusCode := resp.StatusCode()
 	_logger = _logger.With(zap.Int("statusCode", statusCode))
@@ -155,7 +62,7 @@ func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName 
 		_logger.Error("HTTP error", zap.Error(err))
 
 		store.Ranges.Put(name, result)
-		return result, err
+		return &result, err
 	}
 
 	switch statusCode {
@@ -183,41 +90,46 @@ func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName 
 				_logger.Error("Body error", zap.Error(err))
 
 				store.Ranges.Put(name, result)
-				return result, err
+				return &result, err
 			}
 
-			err = jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(body, &rawResult)
+			err = jsoniter.ConfigFastest.Unmarshal(body, &rawResult)
 
 			if err != nil {
 				_logger.Error("Unmarshall error", zap.Error(err))
 
 				store.Ranges.Put(name, result)
-				return result, err
+				return &result, err
 			}
+
+			list := make(semver.Versions, 0, len(rawResult.Versions))
+
+			for _, versionStr := range rawResult.Versions {
+				parsed, e := semver.Parse(versionStr)
+				if e != nil {
+					_logger.Error("Error checking version", zap.Error(e), zap.String("version", versionStr))
+				}
+				list = append(list, parsed)
+			}
+
+			sort.Sort(list)
 
 			result = JSDelivrPackageData{
 				Tags:     rawResult.Tags,
-				Versions: make(semver.Collection, len(rawResult.Versions)),
+				Versions: list,
 			}
-
-			for i, versionStr := range rawResult.Versions {
-				parsed := semver.MustParse(versionStr)
-				result.Versions[i] = parsed
-			}
-
-			sort.Sort(result.Versions)
 
 			store.Ranges.Put(name, result)
-			_logger.Info("Success")
-			return result, err
+			_logger.Debug("Success")
+			return &result, err
 		}
 	case 404:
 		{
 			err = errors.New(fmt.Sprintf("package \"%s\" not found", name))
-			_logger.Info("Fail")
+			_logger.Debug("Fail")
 
 			store.Ranges.Put(name, result)
-			return result, err
+			return &result, err
 		}
 
 	case 509:
@@ -229,115 +141,41 @@ func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName 
 	case 500:
 		{
 			err = errors.New("internal error while validating package")
-			_logger.Info("Fail")
+			_logger.Debug("Fail")
 
 			store.Ranges.Put(name, result)
-			return result, err
+			return &result, err
 		}
 
 	case 429:
 		{
 			err = errors.New("too many requests")
-			_logger.Info("Fail")
+			_logger.Debug("Fail")
 
 			store.Ranges.Put(name, result)
-			return result, err
+			return &result, err
 		}
 
 	default:
 		{
 			err = errors.New(fmt.Sprintf("error: status code %d", statusCode))
-			_logger.Info("Fail")
+			_logger.Debug("Fail")
 			store.Ranges.Put(name, result)
-			return result, err
+			return &result, err
 		}
 	}
 
-	return result, err
+	return &result, err
 }
-
-type MemoryPackageManifestCache struct {
-	Store *sync.Map
-}
-
-const packageFormatterKey = "%s@%s"
 
 func NewPackageManifestKey(name string, version string) string {
-	return fmt.Sprintf(packageFormatterKey, name, version)
-}
+	var b strings.Builder
 
-type MemoryPackageTagStore struct {
-	Store  *sync.Map
-	Logger *zap.Logger
-}
-
-func (i *MemoryPackageTagStore) Get(name string) (*JSDelivrPackageData, bool) {
-	v, ok := i.Store.Load(name)
-
-	if ok {
-		jsdelivr := JSDelivrPackageData{}
-		msgpack.Unmarshal(v.([]byte), &jsdelivr)
-
-		return &jsdelivr, ok
-	} else {
-		return nil, false
-	}
-
-}
-
-func (i *MemoryPackageTagStore) Put(name string, manifest JSDelivrPackageData) {
-
-	b, err := msgpack.Marshal(&manifest)
-
-	if err != nil {
-		i.Logger.Error("Error marshaling jsdelivr")
-		return
-	}
-
-	i.Store.Store(name, b)
-}
-
-func (i *MemoryPackageManifestCache) Get(name string, version string) (*JavascriptPackageManifestPartial, bool) {
-	return i.GetKey(NewPackageManifestKey(name, version))
-}
-
-func (i *MemoryPackageManifestCache) GetKey(key string) (*JavascriptPackageManifestPartial, bool) {
-	v, ok := i.Store.Load(key)
-
-	if ok {
-		buf := buffer.Buffer{
-			Bytes: &bytebufferpool.ByteBuffer{
-				B: v.([]byte),
-			},
-		}
-
-		pkg, _ := DecodeJavascriptPackageManifestPartial(&buf)
-
-		return &pkg, ok
-	} else {
-		return nil, false
-	}
-
-}
-
-func (i *MemoryPackageManifestCache) Put(name string, version string, manifest *JavascriptPackageManifestPartial) {
-
-	buf := buffer.Buffer{
-		Bytes:  bytebufferpool.Get(),
-		Offset: 0,
-	}
-
-	manifest.Encode(&buf)
-
-	var res []byte
-
-	res = make([]byte, buf.Bytes.Len())
-
-	copy(res, buf.Bytes.B)
-
-	defer bytebufferpool.Put(buf.Bytes)
-
-	i.Store.Store(NewPackageManifestKey(name, version), res)
+	b.Grow(len(name) + len(version) + 1)
+	b.WriteString(name)
+	b.WriteRune('@')
+	b.WriteString(version)
+	return b.String()
 }
 
 type PackageManifestStore struct {
@@ -348,50 +186,8 @@ type PackageManifestStore struct {
 	PackageJSONWorkers *workerpool.WorkerPool
 	Emitter            runner.Bus
 	Logger             *zap.Logger
-	npmClient          *fasthttp.Client
-	jsdelivrClient     *fasthttp.Client
-}
-
-func NewMemoryPackageManifestStore() PackageManifestStore {
-	manifest := MemoryPackageManifestCache{
-		Store: &sync.Map{},
-	}
-
-	aliases := MemoryPackageAliasCache{
-		Store: &sync.Map{},
-	}
-
-	logger, _ := zap.NewDevelopment()
-	rangeStore := MemoryPackageTagStore{
-		Logger: logger,
-		Store:  &sync.Map{},
-	}
-
-	store := PackageManifestStore{
-		Manifests:          &manifest,
-		Logger:             logger,
-		Aliases:            &aliases,
-		Ranges:             &rangeStore,
-		PackageJSONWorkers: workerpool.New(100),
-		MetadataWorkers:    workerpool.New(100),
-		Emitter:            runner.New(),
-		npmClient:          &fasthttp.Client{Name: "devserver"},
-		jsdelivrClient:     &fasthttp.Client{Name: "devserver"},
-	}
-
-	if store.jsdelivrClient.TLSConfig == nil {
-		store.jsdelivrClient.TLSConfig = &tls.Config{}
-	}
-
-	if store.npmClient.TLSConfig == nil {
-		store.npmClient.TLSConfig = &tls.Config{}
-	}
-
-	// I don't want this to stop working if the npm provider forgets to renew their SSL cert.
-	store.npmClient.TLSConfig.InsecureSkipVerify = true
-	store.jsdelivrClient.TLSConfig.InsecureSkipVerify = true
-
-	return store
+	NPMClient          *fasthttp.Client
+	JSDelivrClient     *fasthttp.Client
 }
 
 type resultStruct struct {
@@ -410,30 +206,32 @@ const FetchPackageError FetchPackageResult = -1
 
 func (s *PackageManifestStore) flattenDependencies(pkg *JavascriptPackageManifestPartial, parentCtx context.Context) (JavascriptPackageManifest, error) {
 	logger := s.Logger.With(zap.String("rootPackage", pkg.Name))
+
 	start := time.Now()
 
 	val := atomic.Value{}
 	val.Store(make([]string, 0, 1000))
 
 	pack := PackageFlatPack{
-		list:        make([]JavascriptPackageManifestPartial, 0),
-		store:       s,
-		packageKeys: val,
-		Logger:      logger,
-		Waiter:      &sync.WaitGroup{},
+		list:             make([]JavascriptPackageManifestPartial, 0),
+		store:            s,
+		packageKeys:      make(map[string]bool, 100),
+		packageKeysMutex: sync.Mutex{},
+		Logger:           logger,
+		Waiter:           &sync.WaitGroup{},
 	}
 
 	pack.FetchDependencies(pkg, false)
 	pack.Waiter.Wait()
 
-	logger.Info("Complete", zap.Uint64("successCount", pack.PackageCount), zap.Uint64("errorCount", pack.ErrorPackageCount), zap.Duration("elapsed", time.Since(start)))
+	defer logger.Info("Complete", zap.Uint64("successCount", pack.PackageCount), zap.Uint64("errorCount", pack.ErrorPackageCount), zap.Duration("elapsed", time.Since(start)))
 	return pack.appendDependencies(pkg), nil
 }
 
 type PackageFlatPack struct {
-	list        []JavascriptPackageManifestPartial
-	packageKeys atomic.Value
-	mutex       sync.Mutex
+	list             []JavascriptPackageManifestPartial
+	packageKeys      map[string]bool
+	packageKeysMutex sync.Mutex
 
 	PackageCount      uint64
 	ErrorPackageCount uint64
@@ -442,42 +240,36 @@ type PackageFlatPack struct {
 	Waiter            *sync.WaitGroup
 }
 
-func (pack *PackageFlatPack) Append(key string) {
-	keys := pack.packageKeys.Load().([]string)
-	keys = append(keys, key)
-	pack.packageKeys.Store(keys)
+func (pack *PackageFlatPack) Append(key string, value bool) {
+	pack.packageKeysMutex.Lock()
+	defer pack.packageKeysMutex.Unlock()
+	pack.packageKeys[key] = value
+}
+
+func (pack *PackageFlatPack) Has(key string) bool {
+	pack.packageKeysMutex.Lock()
+	defer pack.packageKeysMutex.Unlock()
+	_, ok := pack.packageKeys[key]
+	return ok
 }
 
 func (pack *PackageFlatPack) FetchDependencies(res *JavascriptPackageManifestPartial, includeDevDependencies bool) {
-	var i int
-	i = 0
-	var n int
 
 	if res.DependencyNames != nil && len(res.DependencyNames) > 0 {
-		n = len(res.DependencyNames)
-		i = 0
-		for i < n {
+		for i := range res.DependencyNames {
 			pack.enqueue(res.DependencyNames[i], res.DependencyVersions[i], res.Name)
-
-			i++
 		}
 	}
 
 	if includeDevDependencies && res.DevDependencyNames != nil && len(res.DevDependencyNames) > 0 {
-		n = len(res.DevDependencyNames)
-		i = 0
-		for i < n {
+		for i := range res.DevDependencyNames {
 			pack.enqueue(res.DevDependencyNames[i], res.DevDependencyVersions[i], res.Name)
-			i++
 		}
 	}
 
 	if res.PeerDependencyNames != nil && len(res.PeerDependencyVersions) > 0 {
-		n = len(res.PeerDependencyNames)
-		i = 0
-		for i < n {
+		for i := range res.PeerDependencyNames {
 			pack.enqueue(res.PeerDependencyNames[i], res.PeerDependencyVersions[i], res.Name)
-			i++
 		}
 	}
 }
@@ -488,96 +280,102 @@ func (pack *PackageFlatPack) FetchDependencies(res *JavascriptPackageManifestPar
 // }
 
 func (p *PackageFlatPack) enqueue(name string, version string, parentName string) {
-	var metadata *JSDelivrPackageData
-	var hasMetadata bool
+
 	var err error
 
 	denormalizedVersion := version
-	normalizedVersion := NormalizePackageVersionString(version)
-	versionRange := NewVersionRange(normalizedVersion)
+	versionRange := NewVersionRange(version)
 	s := p.store
+	key := NewPackageManifestKey(name, version)
 
 	if versionRange != VersionRangeNone {
-		metadata, hasMetadata = s.Ranges.Get(name)
+		aliasVersion, hasAlias := s.Aliases.Get(key)
+		if !hasAlias {
+			metadata, hasMetadata := s.Ranges.Get(name)
 
-		if !hasMetadata {
-			w := p.Waiter
-			w.Add(1)
-
-			defer s.Emitter.SubscribeOnceAsync(name, func() {
-				p := p
+			if !hasMetadata {
 				w := p.Waiter
-				w.Done()
+				w.Add(1)
 
-				name := name
-				version := version
-				parentName := parentName
+				p.EnqueueFetchPackageMetadata(name, denormalizedVersion, parentName)
 
-				p.enqueue(name, version, parentName)
+				s.Emitter.SubscribeOnceAsync(name, func() {
+					p := p
+					w := p.Waiter
+					defer w.Done()
 
-			})
+					name := name
+					version := version
+					parentName := parentName
 
-			p.EnqueueFetchPackageMetadata(name, denormalizedVersion, parentName)
+					p.enqueue(name, version, parentName)
 
-			return
+				})
+				return
+			}
+
+			version, err = metadata.satisfying(version)
+			s.Aliases.Put(key, version)
+		} else {
+			version = aliasVersion
 		}
 
-		version, err = metadata.satisfying(normalizedVersion)
-		s.Aliases.Put(NewPackageManifestKey(name, denormalizedVersion), version)
-
 		if err != nil || version == "" {
-			s.Logger.Info("No matching version found", zap.String("name", name), zap.String("version", normalizedVersion), zap.String("parent", parentName))
+			s.Logger.Debug("No matching version found", zap.String("name", name), zap.String("version", denormalizedVersion), zap.String("parent", parentName))
 			manifest := JavascriptPackageManifestPartial{
 				Name: name,
 			}
-			manifest.SetVersion(normalizedVersion)
+			manifest.SetVersion(version)
 			manifest.Status = PackageResolutionStatusInvalidVersion
 
-			s.Manifests.Put(name, normalizedVersion, &manifest)
+			s.Manifests.Put(name, version, &manifest)
 			// pkgErrorCount++
 			atomic.AddUint64(&p.ErrorPackageCount, 1)
 			return
 		}
 
+		key = NewPackageManifestKey(name, version)
 	}
 
-	manifest, exists := s.Manifests.Get(name, version)
+	if p.Has(key) {
+		return
+	}
+
+	manifest, exists := s.Manifests.GetKey(key)
 	if exists {
-		key := NewPackageManifestKey(name, version)
-		p.Append(key)
+		p.Append(key, manifest.Status == PackageResolutionStatusSuccess)
 		atomic.AddUint64(&p.PackageCount, 1)
 		p.FetchDependencies(manifest, false)
-
 		// pkgSuccessCount++
 		return
 	}
 
-	p.EnqueueFetchPackageJSON(name, version, p.Waiter, parentName)
+	p.EnqueueFetchPackageJSON(key, name, version, p.Waiter, parentName)
 }
 
-func (p *PackageFlatPack) EnqueueFetchPackageJSON(name string, version string, w *sync.WaitGroup, parentName string) {
+func (p *PackageFlatPack) EnqueueFetchPackageJSON(key string, name string, version string, w *sync.WaitGroup, parentName string) {
 	s := p.store
 
-	key := NewPackageManifestKey(name, version)
 	w.Add(1)
 
 	var isNew = !s.Emitter.HasCallback(key)
 
 	s.Emitter.SubscribeOnceAsync(key, func(result resultStruct) {
 		w := w
+		defer w.Done()
 		p := p
 		key := key
 		if result.success {
-			p.Append(key)
+			p.Append(key, true)
 			atomic.AddUint64(&p.PackageCount, 1)
 		} else {
+			p.Append(key, false)
 			atomic.AddUint64(&p.ErrorPackageCount, 1)
 		}
-		w.Done()
 	})
 
 	if isNew {
-		s.Logger.Info("Enqueue package.json", zap.String("name", name), zap.String("version", version))
+		s.Logger.Debug("Enqueue package.json", zap.String("name", name), zap.String("version", version))
 
 		s.PackageJSONWorkers.Submit(func() {
 			key := key
@@ -597,7 +395,6 @@ func (p *PackageFlatPack) EnqueueFetchPackageJSON(name string, version string, w
 			} else {
 				defer s.Emitter.Publish(key, errorStruct)
 			}
-
 		})
 	}
 
@@ -629,9 +426,8 @@ func (p *PackageFlatPack) EnqueueFetchPackageMetadata(name string, pendingVersio
 			pendingVersion := pendingVersion
 			parentName := parentName
 
-			jsdelivr, _ := s.FetchPackageMetadata(name, parentName)
-
-			s.Ranges.Put(name, jsdelivr)
+			s.FetchPackageMetadata(name, parentName)
+			// prevent stack overflow
 			p.enqueue(name, pendingVersion, parentName)
 
 			s.Emitter.Publish(name)
@@ -674,7 +470,7 @@ func (p *PackageFlatPack) EnqueueFetchPackageMetadata(name string, pendingVersio
 
 func (p *JavascriptPackageManifest) GrowArrays(to int) {
 	Name := make([]string, len(p.Name), to)
-	Version := make([]Version, len(p.Version), to)
+	Version := make([]string, len(p.Version), to)
 	// Dependencies := make([]uint, len(p.Dependencies), to)
 	// DependenciesIndex := make([]uint, len(p.DependenciesIndex), to)
 
@@ -689,40 +485,129 @@ func (p *JavascriptPackageManifest) GrowArrays(to int) {
 	// p.DependenciesIndex = DependenciesIndex
 }
 
+type Slice struct {
+	sort.Interface
+
+	Others        [][]string
+	Bares         []BareField
+	ExportLengths []uint
+}
+
+func (s Slice) Swap(i, j int) {
+	s.Interface.Swap(i, j)
+	for _, other := range s.Others {
+		other[i], other[j] = other[j], other[i]
+	}
+	s.Bares[i], s.Bares[j] = s.Bares[j], s.Bares[i]
+	s.ExportLengths[i], s.ExportLengths[j] = s.ExportLengths[j], s.ExportLengths[i]
+}
+
 func (s *PackageFlatPack) appendDependencies(pkg *JavascriptPackageManifestPartial) JavascriptPackageManifest {
+	keysList := make(sort.StringSlice, 0, len(s.packageKeys))
+	for key, v := range s.packageKeys {
+		if v {
+			keysList = append(keysList, key)
+		}
+	}
+
+	keysList.Sort()
+
+	count := len(keysList)
+	keysIndex := make(map[string]uint, count)
+	for i, key := range keysList {
+		keysIndex[key] = uint(i)
+	}
+
 	full := JavascriptPackageManifest{
 		Count:    uint(s.PackageCount),
 		Provider: PackageProviderNpm,
-		Name:     make([]string, 0, s.PackageCount),
-		Version:  make([]Version, 0, s.PackageCount),
-		// Dependencies:      make([]uint, 0, s.PackageCount),
-		// DependenciesIndex: make([]uint, 0, s.PackageCount),
+		Name:     make([]string, count),
+		Version:  make([]string, count),
+		ExportsManifest: ExportsManifest{
+			Bare:        make([]string, count),
+			Source:      make([]string, 0, s.PackageCount*4),
+			Destination: make([]string, 0, s.PackageCount*4),
+			BareField:   make([]BareField, count),
+		},
+		ExportsManifestIndex: make([]uint, count*2),
+		Dependencies:         make([]uint, 0, s.PackageCount+s.ErrorPackageCount),
+		DependencyIndex:      make([]uint, count),
 	}
 
 	// var dependencyI uint
-	var dependencyIndexer = make(map[string]uint, s.PackageCount)
+	// var dependencyIndexer = make(map[string]uint, s.PackageCount)
 	var manifest *JavascriptPackageManifestPartial
-	var maxDependencyI uint
 	var manifestExists bool
-	var depExists bool
-	keys := s.packageKeys.Load().([]string)
-	for _, key := range keys {
+
+	var exportI uint
+	// var depExists bool
+	for key, index := range keysIndex {
+		// s.packageKeys.Range(func(key string, value bool) bool {
+
 		manifest, manifestExists = s.store.Manifests.GetKey(key)
 		if manifestExists {
-			_, depExists = dependencyIndexer[key]
-			if depExists {
+			full.ExportsManifest.Bare[index] = manifest.ExportsManifest.Bare
+			full.ExportsManifest.BareField[index] = manifest.ExportsManifest.BareField
+			full.DependencyIndex[index] = uint(len(manifest.DependencyNames) + len(manifest.PeerDependencyNames))
+			exportI = index * 2
+			full.ExportsManifestIndex[exportI] = uint(len(full.ExportsManifest.Source))
+			exportI++
+			full.ExportsManifestIndex[exportI] = uint(len(manifest.ExportsManifest.Destination))
 
-			} else {
-				full.Name = append(full.Name, manifest.Name)
-				full.Version = append(full.Version, manifest.Version)
-				dependencyIndexer[key] = maxDependencyI
-				maxDependencyI++
+			full.ExportsManifest.Destination = append(full.ExportsManifest.Destination, manifest.ExportsManifest.Destination...)
+			full.ExportsManifest.Source = append(full.ExportsManifest.Source, manifest.ExportsManifest.Source...)
+			full.Name[index] = manifest.Name
+			full.Version[index] = manifest.Version.Build
+
+			addedDepsCount := uint(0)
+			for i, depName := range manifest.DependencyNames {
+				depVersion := manifest.DependencyVersions[i]
+				depKey := NewPackageManifestKey(depName, depVersion)
+
+				if NewVersionRange(depVersion) != VersionRangeNone {
+					aliasKey, ok := s.store.Aliases.Get(NewPackageManifestKey(depName, depVersion))
+					if ok {
+						depKey = NewPackageManifestKey(depName, aliasKey)
+					}
+				}
+
+				depIndex, ok := keysIndex[depKey]
+
+				if ok {
+					full.Dependencies = append(full.Dependencies, depIndex)
+					addedDepsCount++
+				}
 			}
+
+			for i, depName := range manifest.PeerDependencyNames {
+				depVersion := manifest.PeerDependencyVersions[i]
+				depKey := NewPackageManifestKey(depName, depVersion)
+
+				if NewVersionRange(depVersion) != VersionRangeNone {
+					aliasKey, ok := s.store.Aliases.Get(NewPackageManifestKey(depName, depVersion))
+					if ok {
+						depKey = NewPackageManifestKey(depName, aliasKey)
+					}
+				}
+
+				depIndex, ok := keysIndex[depKey]
+
+				if ok {
+					full.Dependencies = append(full.Dependencies, depIndex)
+					addedDepsCount++
+				}
+			}
+			full.DependencyIndex[index] = addedDepsCount
 		} else {
 			s.Logger.Sugar().Warnf("Expected %s to exist", key)
 		}
 	}
-	full.Count = maxDependencyI
+
+	// return true
+	// })
+
+	full.Count = uint(count)
+
 	return full
 }
 
@@ -756,7 +641,7 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 
 	// log.Println(fmt.Sprintf(packageJsonFormatterString, name, version))
 	var err error
-	err = store.npmClient.DoDeadline(req, resp, time.Now().Add(time.Second))
+	err = store.NPMClient.DoDeadline(req, resp, time.Now().Add(time.Minute))
 	statusCode := resp.StatusCode()
 	_logger = _logger.With(zap.Int("statusCode", statusCode))
 	var manifest JavascriptPackageManifestPartial
@@ -796,7 +681,7 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 				return &manifest, err
 			}
 
-			manifest, err = NewJavascriptPackageManifestPartial(&body, true)
+			manifest, err = NewJavascriptPackageManifestPartial(&body, config.BLACKLIST_PACKAGES)
 
 			if err != nil {
 				manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)
@@ -806,12 +691,12 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 
 			store.Manifests.Put(name, version, &manifest)
 
-			_logger.Info("Success")
+			_logger.Debug("Success")
 		}
 	case 404:
 		{
 			err = errors.New(fmt.Sprintf("package \"%s\" : \"%s\" not found", name, version))
-			_logger.Info("Fail")
+			_logger.Debug("Fail")
 			manifest := NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusNotFound)
 			store.Manifests.Put(name, version, &manifest)
 			return &manifest, err
@@ -826,7 +711,7 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 	case 500:
 		{
 			err = errors.New("internal error while validating package")
-			_logger.Info("Fail")
+			_logger.Debug("Fail")
 			manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)
 			store.Manifests.Put(name, version, &manifest)
 			return &manifest, err
@@ -836,7 +721,7 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 		{
 			err = errors.New("too many requests")
 			manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusRateLimit)
-			_logger.Info("Fail")
+			_logger.Debug("Fail")
 			store.Manifests.Put(name, version, &manifest)
 			return &manifest, err
 		}
@@ -846,7 +731,7 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 			err = errors.New(fmt.Sprintf("error: status code %d", statusCode))
 			manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)
 			store.Manifests.Put(name, version, &manifest)
-			_logger.Info("Fail")
+			_logger.Debug("Fail")
 			return &manifest, err
 		}
 	}

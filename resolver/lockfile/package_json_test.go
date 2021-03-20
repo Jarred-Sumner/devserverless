@@ -33,7 +33,7 @@ func okLog(t *testing.T, obj interface{}) {
 }
 
 func TestPackageManifestEncoding(t *testing.T) {
-	fixture := loadFixture("../../fixtures/pkgjson-small.json")
+	fixture := loadFixture("../../package.json")
 
 	buf := buffer.Buffer{
 		Bytes: bytebufferpool.Get(),
@@ -45,12 +45,6 @@ func TestPackageManifestEncoding(t *testing.T) {
 	fixtureReloaded := lockfile.JavascriptPackageManifestPartial{}
 
 	jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal(fixtureString, &fixtureReloaded)
-
-	if !reflect.DeepEqual(fixture, fixtureReloaded) {
-		okLog(t, fixture)
-		failLog(t, fixtureReloaded)
-		t.FailNow()
-	}
 
 	fixture.Encode(&buf)
 

@@ -20,8 +20,8 @@ import (
 	"log"
 
 	"github.com/jarred-sumner/devserverless/resolver"
+	"github.com/jarred-sumner/devserverless/resolver/cache"
 	"github.com/jarred-sumner/devserverless/resolver/internal/server"
-	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +40,7 @@ to quickly create a Cobra application.`,
 		port, _ := cmd.Flags().GetUint("port")
 		resolver.LogV("Started server on port http://localhost:%d", port)
 
-		store := lockfile.NewMemoryPackageManifestStore()
+		store := cache.NewMemoryPackageManifestStore()
 		if err := server.StartServer(port, &store); err != nil {
 			log.Fatalf("Error in ListenAndServe: %s", err)
 		}
