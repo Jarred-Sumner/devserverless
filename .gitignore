@@ -10,3 +10,4 @@ prod
 *.lock.json
 log.txt
 /main
+.duckcache

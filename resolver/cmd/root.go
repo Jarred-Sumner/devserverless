@@ -18,6 +18,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -25,7 +26,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var Cmd UserConfig
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -55,23 +56,30 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dev.yaml)")
+	rootCmd.PersistentFlags().StringVar(&Cmd.ConfigFile, "config", "", "config file (default is $HOME/.duckenv)")
+	rootCmd.PersistentFlags().StringVarP(&Cmd.Cache, "cache", "c", filepath.Join(os.Getenv("HOME"), ".duck"), "Absolute directory or \"none\"")
 
+	viper.BindPFlag("cache", rootCmd.Flags().Lookup("cache"))
+	viper.BindEnv("cache", "DUCK_CACHE")
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
+	if Cmd.ConfigFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
+		viper.SetConfigFile(Cmd.ConfigFile)
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
 		cobra.CheckErr(err)
 
+		pwd, err := os.Getwd()
+		cobra.CheckErr(err)
+
+		viper.AddConfigPath(pwd)
 		// Search config in home directory with name ".reoslver" (without extension).
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".dev")
+		viper.SetConfigName(".duckenv")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

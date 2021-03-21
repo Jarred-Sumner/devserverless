@@ -16,10 +16,12 @@ limitations under the License.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,10 +33,40 @@ import (
 	"github.com/jarred-sumner/peechy/buffer"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/valyala/bytebufferpool"
 	"github.com/valyala/fasthttp"
 )
+
+func NormalizeRegistrar(cmd *cobra.Command) (string, error) {
+	registrar, _ := cmd.Flags().GetString("registrar")
+
+	if registrar == "npm" {
+		registrar = lockfile.JSRegistrarFormatterStringNPM
+	} else if registrar == "skypack" {
+		registrar = lockfile.JSRegistrarFormatterStringSkypack
+	} else if registrar == "jspm" {
+		registrar = lockfile.JSRegistrarFormatterStringJSPM
+	} else if strings.HasPrefix(registrar, "https://") || strings.HasPrefix(registrar, "http://") {
+
+		if strings.Count(registrar, "%s") != 2 {
+			registrar += "%s/%s"
+		}
+	} else {
+		return "", errors.New("Expected registrar to be a url starting with https://, http://, or \"npm\", \"jspm\" or \"skypack\"")
+	}
+
+	return registrar, nil
+}
+
+func NormalizeCacheType(host string) cache.CacheType {
+	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
+		return cache.CacheTypeRemote
+	} else if host == "none" || host == "" || host == "disable" {
+		return cache.CacheTypeNone
+	} else {
+		return cache.CacheTypeLocal
+	}
+}
 
 // clientCmd represents the client command
 var clientCmd = &cobra.Command{
@@ -47,6 +79,8 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		start := time.Now()
+
 		pkgJsonPath, _ := cmd.Flags().GetString("package")
 		pkgJsonPath = path.Clean(pkgJsonPath)
 		var err error
@@ -58,44 +92,55 @@ to quickly create a Cobra application.`,
 			outPathLock = args[0]
 		}
 
-		// start := time.Now()
-
-		asJSON, _ := cmd.Flags().GetBool("json")
-
-		var jsonText []byte
-
-		jsonText, err = ioutil.ReadFile(pkgJsonPath)
-
-		if err != nil {
-			cmd.Println("An error occurred while reading " + pkgJsonPath)
-			cmd.PrintErr(err)
-		}
-
-		file, err := lockfile.NewJavascriptPackageManifestPartial(&jsonText, config.BLACKLIST_PACKAGES)
-
-		if err != nil {
-			cmd.Println("An error occurred while parsing " + pkgJsonPath)
-			cmd.PrintErr(err)
-		}
-		version := "1.0.0"
-		name := file.Name
-		var manifest lockfile.JavascriptPackageManifest
-
-		host, _ := cmd.Flags().GetString("cache")
+		var host string
+		host, err = cmd.PersistentFlags().GetString("cache")
 		var cacheType cache.CacheType
 		importMapHost, _ := cmd.Flags().GetString("to")
 
-		if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
-			cacheType = cache.CacheTypeRemote
-		} else if host == "none" || host == "" || host == "disable" {
-			cacheType = cache.CacheTypeNone
-		} else {
-			cacheType = cache.CacheTypeLocal
+		var flushChannel chan error
+
+		cacheType = NormalizeCacheType(host)
+		var registrar string
+		registrar, err = NormalizeRegistrar(cmd)
+
+		if err != nil {
+			cmd.PrintErr(err)
+			doExit(1, flushChannel)
+			return
+		}
+
+		asJSON, _ := cmd.Flags().GetBool("json")
+		var file lockfile.JavascriptPackageManifestPartial
+		var name string
+		var version string
+		var manifest lockfile.JavascriptPackageManifest
+
+		var loadContent = func() {
+			var jsonText []byte
+
+			jsonText, err = ioutil.ReadFile(pkgJsonPath)
+
+			if err != nil {
+				cmd.Println("An error occurred while reading " + pkgJsonPath)
+				cmd.PrintErr(err)
+				doExit(1, flushChannel)
+			}
+
+			file, err = lockfile.NewJavascriptPackageManifestPartial(&jsonText, config.BLACKLIST_PACKAGES)
+
+			if err != nil {
+				cmd.Println("An error occurred while parsing " + pkgJsonPath)
+				cmd.PrintErr(err)
+				doExit(1, flushChannel)
+			}
+			version = "1.0.0"
+			name = file.Name
 		}
 
 		switch cacheType {
 		case cache.CacheTypeRemote:
 			{
+				loadContent()
 				denylist := false
 				req := lockfile.JavascriptPackageRequest{
 					Manifest:       &file,
@@ -170,16 +215,64 @@ to quickly create a Cobra application.`,
 			}
 		case cache.CacheTypeLocal:
 			{
+				host = filepath.Clean(host)
 
+				dur0 := time.Now()
+
+				if !filepath.IsAbs(host) {
+					host, err = filepath.Abs(host)
+
+					if err != nil {
+						cmd.Printf("<%d> [ERR]: Cannot access cache directory at %s. Set --cache to \"none\", to an https URL, or to a directory you have write permissions to.\n%s", lockfile.ErrorCodeGeneric, err.Error())
+						os.Exit(1)
+						return
+					}
+				}
+
+				if _, err := os.Stat(host); os.IsNotExist(err) {
+
+					err = os.MkdirAll(host, 0755)
+					if err != nil {
+						cmd.Printf("<%d> [ERR]: Cannot access cache directory at %s. Set --cache to \"none\", to an https URL, or to a directory you have write permissions to.\n%s", lockfile.ErrorCodeGeneric, err.Error())
+						os.Exit(1)
+					}
+
+				}
+
+				if err != nil {
+					cmd.Printf("<%d> [ERR]: Cannot access cache directory at %s. Set --cache to \"none\", to an https URL, or to a directory you have write permissions to.\n%s", lockfile.ErrorCodeGeneric, err.Error())
+					os.Exit(1)
+				}
+
+				loadContent()
+				cmd.Printf("resolved dir in %s", time.Since(dur0).String())
+				dur1 := time.Now()
+				store, err := cache.NewLocalPackageManifestStore(filepath.Join(host, ".duckcache"))
+				cmd.Printf("opened db in %s", time.Since(dur1).String())
+				if err != nil {
+					cmd.Printf("<%d> [ERR]: %s", lockfile.ErrorCodeGeneric, err.Error())
+					os.Exit(1)
+				}
+				store.Store.RegistrarAPI = registrar
+				manifest, err = store.Store.ResolveDependencies(&file, cmd.Context())
+				if err != nil {
+					cmd.Printf("<%d> [ERR]: %s", lockfile.ErrorCodeGeneric, err.Error())
+					os.Exit(1)
+				}
+				flushChannel = make(chan error)
+				go store.Flush(flushChannel, true)
 			}
 		case cache.CacheTypeNone:
 			{
+				loadContent()
 				store := cache.NewMemoryPackageManifestStore()
+				store.RegistrarAPI = registrar
 				manifest, err = store.ResolveDependencies(&file, cmd.Context())
 
 				if err != nil {
 					cmd.Printf("<%d> [ERR]: %s", lockfile.ErrorCodeGeneric, err.Error())
-					os.Exit(1)
+					doExit(1, nil)
+					return
 				}
 			}
 		}
@@ -190,14 +283,16 @@ to quickly create a Cobra application.`,
 
 		if err != nil {
 			cmd.Printf("<%d> [ERR]: %s\n", lockfile.ErrorCodeGeneric, "Failed to generate import map")
-			os.Exit(1)
+			doExit(1, flushChannel)
+			return
 		}
 
 		err = os.WriteFile(outPathImport, importBuffer, os.ModePerm)
 
 		if err != nil {
 			cmd.Printf("<%d> [ERR]: %s\n", lockfile.ErrorCodeGeneric, "Failed to write import map")
-			os.Exit(1)
+			doExit(1, flushChannel)
+			return
 		}
 
 		manifestBuffer := buffer.Buffer{
@@ -208,7 +303,8 @@ to quickly create a Cobra application.`,
 
 		if err != nil {
 			cmd.Printf("<%d> [ERR]: %s\n", lockfile.ErrorCodeGeneric, "Encoding error")
-			os.Exit(1)
+			doExit(1, flushChannel)
+			return
 		}
 
 		cmd.Printf("🔗 Saved import map to %s\n", outPathImport)
@@ -218,9 +314,14 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			cmd.Printf("<%d> [ERR]: Failed to save to %s\n", lockfile.ErrorCodeGeneric, outPathLock)
 			cmd.PrintErr(err)
-			os.Exit(1)
+			doExit(1, flushChannel)
+			return
 		} else {
 			cmd.Printf("💾 Saved lockfile (%d deps, %d modules) to %s\n", manifest.Count, len(manifest.ExportsManifest.Source)+int(manifest.Count), outPathLock)
+		}
+
+		if err == nil {
+			cmd.Printf("✅ Completed in %s", time.Since(start).Truncate(time.Microsecond))
 		}
 
 		if asJSON {
@@ -231,11 +332,19 @@ to quickly create a Cobra application.`,
 			os.WriteFile(outPathLock+".json", formatJSON(json), os.ModePerm)
 		}
 
-		if err == nil {
-			// cmd.Printf("✅ Completed in %s", time.Since(start).Truncate(time.Microsecond))
-		}
+		doExit(0, flushChannel)
+		return
 
 	},
+}
+
+func doExit(exitCode int, flusher chan error) {
+	if flusher == nil {
+		os.Exit(exitCode)
+	} else {
+		<-flusher
+		os.Exit(exitCode)
+	}
 }
 
 func init() {
@@ -245,14 +354,11 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	clientCmd.Flags().StringP("cache", "c", "$HOME/.cache", "File path or API server (https:// for API)")
-	viper.BindPFlag("cache", clientCmd.Flags().Lookup("cache"))
-	viper.BindEnv("cache", "PACKAGE_CACHE")
-
 	clientCmd.Flags().BoolP("json", "j", true, "Write json version of lockfile to disk")
 	clientCmd.Flags().BoolP("write", "w", true, "Write binary version of lockfile to disk")
 	clientCmd.Flags().StringP("package", "p", "./package.json", "Path to package.json file")
 	clientCmd.Flags().StringP("to", "t", "https://ga.jspm.io/npm:", "If its a local file path, download & extract tarballs. If its a remote file path, use an import map.")
+	clientCmd.Flags().String("registrar", lockfile.JSRegistrarFormatterStringSkypack, "Where to load the package.json files from? Can be \"npm\", \"skypack\", \"jspm\", or an absolute URL where the first %s is the package name and the second %s is the version.")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

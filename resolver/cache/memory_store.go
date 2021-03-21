@@ -3,6 +3,7 @@ package cache
 import (
 	"crypto/tls"
 
+	"github.com/dgraph-io/ristretto"
 	"github.com/gammazero/workerpool"
 	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	runner "github.com/jarred-sumner/devserverless/resolver/runner"
@@ -11,23 +12,23 @@ import (
 )
 
 type MemoryPackageAliasCache struct {
-	Store lockfile.StringMap
+	Store ristretto.Cache
 }
 
 type MemoryPackageManifestCache struct {
-	Store lockfile.JavascriptPackageManifestPartialMap
+	Store ristretto.Cache
 }
 
 type MemoryPackageTagStore struct {
-	Store  lockfile.JSDelivrPackageDataMap
-	Logger *zap.Logger
+	Store ristretto.Cache
 }
 
 func (i *MemoryPackageTagStore) Get(name string) (*lockfile.JSDelivrPackageData, bool) {
-	v, ok := i.Store.Load(name)
+	v, ok := i.Store.Get(name)
 
 	if ok {
-		return v, ok
+		pkg := v.(lockfile.JSDelivrPackageData)
+		return &pkg, ok
 	} else {
 		return nil, false
 	}
@@ -35,7 +36,7 @@ func (i *MemoryPackageTagStore) Get(name string) (*lockfile.JSDelivrPackageData,
 }
 
 func (i *MemoryPackageTagStore) Put(name string, manifest lockfile.JSDelivrPackageData) {
-	i.Store.Store(name, &manifest)
+	i.Store.Set(name, manifest, 1)
 }
 
 func (i *MemoryPackageManifestCache) Get(name string, version string) (*lockfile.JavascriptPackageManifestPartial, bool) {
@@ -43,10 +44,11 @@ func (i *MemoryPackageManifestCache) Get(name string, version string) (*lockfile
 }
 
 func (i *MemoryPackageManifestCache) GetKey(key string) (*lockfile.JavascriptPackageManifestPartial, bool) {
-	v, ok := i.Store.Load(key)
+	v, ok := i.Store.Get(key)
 
 	if ok {
-		return v, ok
+		partial := v.(lockfile.JavascriptPackageManifestPartial)
+		return &partial, ok
 	} else {
 		return nil, false
 	}
@@ -54,30 +56,62 @@ func (i *MemoryPackageManifestCache) GetKey(key string) (*lockfile.JavascriptPac
 }
 
 func (i *MemoryPackageManifestCache) Put(name string, version string, manifest *lockfile.JavascriptPackageManifestPartial) {
-
-	i.Store.Store(lockfile.NewPackageManifestKey(name, version), manifest)
+	i.Store.Set(lockfile.NewPackageManifestKey(name, version), *manifest, 1)
 }
 
+func NewMemoryPackageManifestCache() *MemoryPackageManifestCache {
+	manifestConfig := ristretto.Config{
+		NumCounters: 1e7,     // number of keys to track frequency of (10M).
+		MaxCost:     1600000, // maximum cost of cache (1GB).
+		BufferItems: 64,      // number of keys per Get buffer.
+	}
+
+	manifestCache, _ := ristretto.NewCache(&manifestConfig)
+	return &MemoryPackageManifestCache{
+		Store: *manifestCache,
+	}
+}
+
+func NewMemoryPackageAliasCache() *MemoryPackageAliasCache {
+	aliasConfig := ristretto.Config{
+		NumCounters: 1e7,     // number of keys to track frequency of (10M).
+		MaxCost:     1600000, // maximum cost of cache (1GB).
+		BufferItems: 64,      // number of keys per Get buffer.
+	}
+
+	aliasCache, _ := ristretto.NewCache(&aliasConfig)
+
+	return &MemoryPackageAliasCache{
+		Store: *aliasCache,
+	}
+}
+
+func NewMemoryPackageRangeCache() *MemoryPackageTagStore {
+	rangeConfig := ristretto.Config{
+		NumCounters: 1e7,     // number of keys to track frequency of (10M).
+		MaxCost:     1600000, // maximum cost of cache (1GB).
+		BufferItems: 64,      // number of keys per Get buffer.
+	}
+
+	rangeCache, _ := ristretto.NewCache(&rangeConfig)
+
+	return &MemoryPackageTagStore{
+		Store: *rangeCache,
+	}
+}
+
+// Using Ristretto here is about a 50% perf hit when everything is already cached.
+// But, 50% here is approximately 125µs (0.125ms)
+// So that's probably the right move.
+// It needs to be an LRU because what if you have like 10,000 packages in memory will it fit?  Who the duck knows
 func NewMemoryPackageManifestStore() lockfile.PackageManifestStore {
-	manifest := MemoryPackageManifestCache{
-		Store: lockfile.JavascriptPackageManifestPartialMap{},
-	}
-
-	aliases := MemoryPackageAliasCache{
-		Store: lockfile.StringMap{},
-	}
-
 	logger, _ := zap.NewDevelopment()
-	rangeStore := MemoryPackageTagStore{
-		Logger: logger,
-		Store:  lockfile.JSDelivrPackageDataMap{},
-	}
 
 	store := lockfile.PackageManifestStore{
-		Manifests:          &manifest,
+		Manifests:          NewMemoryPackageManifestCache(),
 		Logger:             logger,
-		Aliases:            &aliases,
-		Ranges:             &rangeStore,
+		Aliases:            NewMemoryPackageAliasCache(),
+		Ranges:             NewMemoryPackageRangeCache(),
 		PackageJSONWorkers: workerpool.New(100),
 		MetadataWorkers:    workerpool.New(100),
 		Emitter:            runner.New(),
@@ -101,15 +135,14 @@ func NewMemoryPackageManifestStore() lockfile.PackageManifestStore {
 }
 
 func (m *MemoryPackageAliasCache) Get(name string) (string, bool) {
-	v, e := m.Store.Load(name)
+	v, e := m.Store.Get(name)
 	if e {
-		return v, e
+		return v.(string), e
 	} else {
 		return "", e
 	}
-
 }
 
 func (m *MemoryPackageAliasCache) Put(name string, alias string) {
-	m.Store.Store(name, alias)
+	m.Store.Set(name, alias, 1)
 }

@@ -188,6 +188,7 @@ type PackageManifestStore struct {
 	Logger             *zap.Logger
 	NPMClient          *fasthttp.Client
 	JSDelivrClient     *fasthttp.Client
+	RegistrarAPI       string
 }
 
 type resultStruct struct {
@@ -197,7 +198,9 @@ type resultStruct struct {
 var successStruct = resultStruct{success: true}
 var errorStruct = resultStruct{success: false}
 
-const packageJsonFormatterString = "https://ga.jspm.io/npm:%s@%s/package.json"
+const JSRegistrarFormatterStringJSPM = "https://ga.jspm.io/npm:%s@%s/package.json"
+const JSRegistrarFormatterStringNPM = "https://registry.npmjs.org/%s/%s"
+const JSRegistrarFormatterStringSkypack = "https://cdn.skypack.dev/%s@%s/package.json"
 
 type FetchPackageResult int
 
@@ -628,13 +631,15 @@ func (s *PackageManifestStore) ResolveDependencies(pkg *JavascriptPackageManifes
 }
 
 func (store *PackageManifestStore) FetchPackageJSON(name string, version string, parentName string) (*JavascriptPackageManifestPartial, error) {
-	req := fasthttp.AcquireRequest()
-	resp := fasthttp.AcquireResponse()
+	_req := fasthttp.AcquireRequest()
+	_resp := fasthttp.AcquireResponse()
 
-	defer fasthttp.ReleaseResponse(resp)
-	defer fasthttp.ReleaseRequest(req)
+	defer fasthttp.ReleaseResponse(_resp)
+	defer fasthttp.ReleaseRequest(_req)
+	req := _req
+	resp := _resp
 
-	req.SetRequestURI(fmt.Sprintf(packageJsonFormatterString, name, version))
+	req.SetRequestURI(fmt.Sprintf(store.RegistrarAPI, name, version))
 	var _logger *zap.Logger
 	_logger = store.Logger.With(zap.String("url", req.URI().String()), zap.String("name", name), zap.String("version", version), zap.String("parent", parentName))
 	_logger.Info("GET Dependency")
@@ -643,6 +648,27 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 	var err error
 	err = store.NPMClient.DoDeadline(req, resp, time.Now().Add(time.Minute))
 	statusCode := resp.StatusCode()
+	var loc string
+	if statusCode == 302 || statusCode == 301 {
+		loc = string(resp.Header.Peek("Location"))
+		if len(loc) > 0 {
+			_req := fasthttp.AcquireRequest()
+			uri := fasthttp.AcquireURI()
+			uri.Update(fmt.Sprintf(store.RegistrarAPI, name, version))
+			uri.Update(loc)
+			_req.SetRequestURI(uri.String())
+			fasthttp.ReleaseURI(uri)
+			defer fasthttp.ReleaseRequest(_req)
+			defer fasthttp.ReleaseResponse(_resp)
+			_resp = fasthttp.AcquireResponse()
+
+			req = _req
+			resp = _resp
+
+			err = store.NPMClient.DoDeadline(_req, _resp, time.Now().Add(time.Minute))
+			statusCode = resp.StatusCode()
+		}
+	}
 	_logger = _logger.With(zap.Int("statusCode", statusCode))
 	var manifest JavascriptPackageManifestPartial
 

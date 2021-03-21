@@ -18,6 +18,7 @@ func (p *JSDelivrPackageData) satisfying(version string) (string, error) {
 	if version == "*" {
 		version = "latest"
 	}
+
 	if len(p.Tags[version]) > 0 {
 		version = p.Tags[version]
 	}

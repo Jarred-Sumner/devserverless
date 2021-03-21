@@ -399,7 +399,7 @@ func NewVersionRange(input string) VersionRange {
 		return VersionRangeCaret
 	} else if strings.HasPrefix(input, "~") {
 		return VersionRangeTilda
-	} else if strings.ContainsAny(input, "<>&|-+*=/") {
+	} else if !strings.ContainsAny(input, ".0123456789") || strings.ContainsAny(input, "<>&|-+*=/") {
 		return VersionRangeComplex
 	} else {
 		return VersionRangeNone

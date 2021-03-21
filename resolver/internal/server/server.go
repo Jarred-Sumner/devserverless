@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/atreugo/cors"
+	"github.com/jarred-sumner/devserverless/resolver/cache"
 	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	"github.com/jarred-sumner/peechy/buffer"
 )
@@ -175,7 +176,7 @@ func PackagePartial(ctx *atreugo.RequestCtx) error {
 	return nil
 }
 
-func StartServer(port uint, store *lockfile.PackageManifestStore) error {
+func StartServer(port uint, store *lockfile.PackageManifestStore, localStore *cache.LocalPackageManifestStore) error {
 	state.Store = store
 
 	config := atreugo.Config{

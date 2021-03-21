@@ -22,6 +22,7 @@ import (
 	"github.com/jarred-sumner/devserverless/resolver"
 	"github.com/jarred-sumner/devserverless/resolver/cache"
 	"github.com/jarred-sumner/devserverless/resolver/internal/server"
+	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	"github.com/spf13/cobra"
 )
 
@@ -39,10 +40,47 @@ to quickly create a Cobra application.`,
 		fmt.Println("serve called")
 		port, _ := cmd.Flags().GetUint("port")
 		resolver.LogV("Started server on port http://localhost:%d", port)
+		registrar, err := NormalizeRegistrar(cmd)
 
-		store := cache.NewMemoryPackageManifestStore()
-		if err := server.StartServer(port, &store); err != nil {
-			log.Fatalf("Error in ListenAndServe: %s", err)
+		if err != nil {
+			cmd.PrintErr(err)
+			return
+		}
+
+		cachePath, err := cmd.PersistentFlags().GetString("cache")
+
+		if err != nil {
+			cmd.PrintErr(err)
+			return
+		}
+
+		cacheType := NormalizeCacheType(cachePath)
+
+		switch cacheType {
+		case cache.CacheTypeLocal:
+			{
+				store, err := cache.NewLocalPackageManifestStore(cachePath)
+				store.Store.RegistrarAPI = registrar
+				if err != nil {
+					log.Fatal(err)
+					return
+				}
+				if err := server.StartServer(port, store.Store, nil); err != nil {
+					log.Fatalf("Error in ListenAndServe: %s", err)
+				}
+			}
+		case cache.CacheTypeNone:
+			{
+				store := cache.NewMemoryPackageManifestStore()
+				store.RegistrarAPI = registrar
+				if err := server.StartServer(port, &store, nil); err != nil {
+					log.Fatalf("Error in ListenAndServe: %s", err)
+				}
+			}
+		default:
+			{
+				log.Fatalf("Unsupported cache  %s", cachePath)
+			}
 		}
 
 	},
@@ -50,6 +88,8 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
+
+	serveCmd.Flags().String("registrar", lockfile.JSRegistrarFormatterStringJSPM, "Where to load the package.json files from? Can be \"npm\", \"skypack\", \"jspm\", or an absolute URL where the first %s is the package name and the second %s is the version.")
 
 	// Here you will define your flags and configuration settings.
 
