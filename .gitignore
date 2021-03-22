@@ -11,3 +11,5 @@ prod
 log.txt
 /main
 .duckcache
+/fixtures/node_modules
+/caches

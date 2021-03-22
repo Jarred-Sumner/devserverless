@@ -178,29 +178,31 @@ func NewPackageManifestKey(name string, version string) string {
 	return b.String()
 }
 
+type CompletionNotifier interface {
+	Enqueue(manifest *JavascriptPackageManifestPartial)
+}
+
 type PackageManifestStore struct {
 	Manifests          PackageManifestCache
 	Ranges             PackageRangeCache
 	Aliases            PackageAliasCache
 	MetadataWorkers    *workerpool.WorkerPool
 	PackageJSONWorkers *workerpool.WorkerPool
+	Installer          CompletionNotifier
 	Emitter            runner.Bus
 	Logger             *zap.Logger
 	NPMClient          *fasthttp.Client
 	JSDelivrClient     *fasthttp.Client
-	RegistrarAPI       string
+	RegistrarAPI       config.RegistrarString
 }
 
 type resultStruct struct {
 	success bool
+	value   *JavascriptPackageManifestPartial
 }
 
 var successStruct = resultStruct{success: true}
 var errorStruct = resultStruct{success: false}
-
-const JSRegistrarFormatterStringJSPM = "https://ga.jspm.io/npm:%s@%s/package.json"
-const JSRegistrarFormatterStringNPM = "https://registry.npmjs.org/%s/%s"
-const JSRegistrarFormatterStringSkypack = "https://cdn.skypack.dev/%s@%s/package.json"
 
 type FetchPackageResult int
 
@@ -341,12 +343,20 @@ func (p *PackageFlatPack) enqueue(name string, version string, parentName string
 	}
 
 	if p.Has(key) {
+		manifest, exists := s.Manifests.GetKey(key)
+		if exists && p.store.Installer != nil && manifest.Status == PackageResolutionStatusSuccess {
+			p.store.Installer.Enqueue(manifest)
+		}
 		return
 	}
 
 	manifest, exists := s.Manifests.GetKey(key)
 	if exists {
-		p.Append(key, manifest.Status == PackageResolutionStatusSuccess)
+		isSuccess := manifest.Status == PackageResolutionStatusSuccess
+		p.Append(key, isSuccess)
+		if p.store.Installer != nil && manifest.Status == PackageResolutionStatusSuccess {
+			p.store.Installer.Enqueue(manifest)
+		}
 		atomic.AddUint64(&p.PackageCount, 1)
 		p.FetchDependencies(manifest, false)
 		// pkgSuccessCount++
@@ -370,6 +380,9 @@ func (p *PackageFlatPack) EnqueueFetchPackageJSON(key string, name string, versi
 		key := key
 		if result.success {
 			p.Append(key, true)
+			if p.store.Installer != nil && result.value != nil && result.value.Status == PackageResolutionStatusSuccess {
+				p.store.Installer.Enqueue(result.value)
+			}
 			atomic.AddUint64(&p.PackageCount, 1)
 		} else {
 			p.Append(key, false)
@@ -393,8 +406,9 @@ func (p *PackageFlatPack) EnqueueFetchPackageJSON(key string, name string, versi
 			res, err := s.FetchPackageJSON(name, version, parentName)
 
 			if err == nil {
-				defer s.Emitter.Publish(key, successStruct)
 				p.FetchDependencies(res, false)
+				s.Emitter.Publish(key, resultStruct{value: res, success: true})
+
 			} else {
 				defer s.Emitter.Publish(key, errorStruct)
 			}
@@ -639,7 +653,7 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 	req := _req
 	resp := _resp
 
-	req.SetRequestURI(fmt.Sprintf(store.RegistrarAPI, name, version))
+	req.SetRequestURI(store.RegistrarAPI.PackageJSON(name, version))
 	var _logger *zap.Logger
 	_logger = store.Logger.With(zap.String("url", req.URI().String()), zap.String("name", name), zap.String("version", version), zap.String("parent", parentName))
 	_logger.Info("GET Dependency")
@@ -654,7 +668,7 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 		if len(loc) > 0 {
 			_req := fasthttp.AcquireRequest()
 			uri := fasthttp.AcquireURI()
-			uri.Update(fmt.Sprintf(store.RegistrarAPI, name, version))
+			uri.Update(store.RegistrarAPI.PackageJSON(name, version))
 			uri.Update(loc)
 			_req.SetRequestURI(uri.String())
 			fasthttp.ReleaseURI(uri)
@@ -707,7 +721,7 @@ func (store *PackageManifestStore) FetchPackageJSON(name string, version string,
 				return &manifest, err
 			}
 
-			manifest, err = NewJavascriptPackageManifestPartial(&body, config.BLACKLIST_PACKAGES)
+			manifest, err = NewJavascriptPackageManifestPartial(&body, config.BLACKLIST_PACKAGES, false)
 
 			if err != nil {
 				manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)

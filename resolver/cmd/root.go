@@ -20,17 +20,17 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jarred-sumner/devserverless/config"
+	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
 )
 
-var Cmd UserConfig
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "dev",
+	Use:   "duck",
 	Short: "A brief description of your application",
 	Long: `A longer description that spans multiple lines and likely contains
 examples and usage of using your application. For example:
@@ -56,18 +56,26 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&Cmd.ConfigFile, "config", "", "config file (default is $HOME/.duckenv)")
-	rootCmd.PersistentFlags().StringVarP(&Cmd.Cache, "cache", "c", filepath.Join(os.Getenv("HOME"), ".duck"), "Absolute directory or \"none\"")
+	rootCmd.PersistentFlags().StringVar(&config.Global.ConfigFile, "config", "", "config file (default is $HOME/.duckenv)")
+	rootCmd.PersistentFlags().StringVarP(&config.Global.Cache, "cache", "c", filepath.Join(os.Getenv("HOME"), ".duck"), "Absolute directory or \"none\"")
+	rootCmd.PersistentFlags().StringVarP((*string)(&config.Global.ImportMapHost), "to", "t", string(config.JSRegistrarFormatterStringNPM), "If its a local file path, download & extract tarballs. If its a remote file path, use an import map.")
+	rootCmd.PersistentFlags().StringVar((*string)(&config.Global.Registrar), "registrar", string(config.JSRegistrarFormatterStringNPM), "Where to load the package.json files from? Can be \"npm\", \"skypack\", \"jspm\", or an absolute URL where the first %s is the package name and the second %s is the version.")
+	rootCmd.PersistentFlags().String("profile", "none", "run with profiling enabled (memory, cpu, trace, goroutine, mutex, block or thread)")
 
 	viper.BindPFlag("cache", rootCmd.Flags().Lookup("cache"))
+	viper.BindPFlag("to", rootCmd.Flags().Lookup("to"))
+	viper.BindPFlag("registrar", rootCmd.Flags().Lookup("registrar"))
 	viper.BindEnv("cache", "DUCK_CACHE")
+	viper.BindEnv("registrar", "NPM_PACKAGE_REGISTRAR")
+	// rootCmd.TraverseChildren = true
+
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if Cmd.ConfigFile != "" {
+	if config.Global.ConfigFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(Cmd.ConfigFile)
+		viper.SetConfigFile(config.Global.ConfigFile)
 	} else {
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -87,5 +95,44 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	}
+
+	if profileType, _ := rootCmd.Flags().GetString("profile"); profileType != "" && profileType != "none" {
+		switch profileType {
+		case "memory":
+			{
+				config.Profiler = profile.Start(profile.MemProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+			}
+		case "cpu":
+			{
+				config.Profiler = profile.Start(profile.CPUProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+			}
+		case "trace":
+			{
+				config.Profiler = profile.Start(profile.TraceProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+			}
+		case "goroutine":
+			{
+				config.Profiler = profile.Start(profile.GoroutineProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+			}
+		case "mutex":
+			{
+				config.Profiler = profile.Start(profile.MutexProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+			}
+		case "thread":
+			{
+				config.Profiler = profile.Start(profile.ThreadcreationProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+			}
+		case "block":
+			{
+				config.Profiler = profile.Start(profile.BlockProfile, profile.ProfilePath("."), profile.NoShutdownHook)
+			}
+		default:
+			{
+				fmt.Printf("Invalid profile %s", profileType)
+				os.Exit(1)
+			}
+		}
+
 	}
 }

@@ -356,6 +356,7 @@ function encodeRawDependencyList(message, bb) {
 function decodeJavascriptPackageManifest(bb) {
   var result = {};
 
+  result["hash"] = bb.readString();
   result["count"] = bb.readVarUint();
   var length = bb.readVarUint();
   var values = result["name"] = Array(length);
@@ -378,6 +379,13 @@ function decodeJavascriptPackageManifest(bb) {
 }
 
 function encodeJavascriptPackageManifest(message, bb) {
+
+  var value = message["hash"];
+  if (value != null) {
+    bb.writeString(value);
+  } else {
+    throw new Error("Missing required field \"hash\"");
+  }
 
   var value = message["count"];
   if (value != null) {
@@ -524,6 +532,19 @@ function decodeJavascriptPackageManifestPartial(bb) {
   var length = bb.readVarUint();
   var values = result["devDependencyVersions"] = Array(length);
   for (var i = 0; i < length; i++) values[i] = bb.readAlphanumeric();
+  var length = bb.readVarUint();
+  var values = result["scriptKeys"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readString();
+  var length = bb.readVarUint();
+  var values = result["scriptValues"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readString();
+  var length = bb.readVarUint();
+  var values = result["binKeys"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readString();
+  var length = bb.readVarUint();
+  var values = result["binValues"] = Array(length);
+  for (var i = 0; i < length; i++) values[i] = bb.readString();
+  result["hasPostInstall"] = !!bb.readByte();
   return result;
 }
 
@@ -638,6 +659,61 @@ bb.writeByte(encoded);
     }
   } else {
     throw new Error("Missing required field \"devDependencyVersions\"");
+  }
+
+  var value = message["scriptKeys"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeString(value);
+    }
+  } else {
+    throw new Error("Missing required field \"scriptKeys\"");
+  }
+
+  var value = message["scriptValues"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeString(value);
+    }
+  } else {
+    throw new Error("Missing required field \"scriptValues\"");
+  }
+
+  var value = message["binKeys"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeString(value);
+    }
+  } else {
+    throw new Error("Missing required field \"binKeys\"");
+  }
+
+  var value = message["binValues"];
+  if (value != null) {
+    var values = value, n = values.length;
+    bb.writeVarUint(n);
+    for (var i = 0; i < n; i++) {
+      value = values[i];
+      bb.writeString(value);
+    }
+  } else {
+    throw new Error("Missing required field \"binValues\"");
+  }
+
+  var value = message["hasPostInstall"];
+  if (value != null) {
+    bb.writeByte(value);
+  } else {
+    throw new Error("Missing required field \"hasPostInstall\"");
   }
 
 }

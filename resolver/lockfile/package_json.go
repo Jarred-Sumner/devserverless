@@ -1,9 +1,13 @@
 package lockfile
 
 import (
+	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	semver "github.com/Jarred-Sumner/semver/v4"
+	"github.com/cespare/xxhash"
 	"github.com/jarred-sumner/devserverless/config"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -63,7 +67,7 @@ func NewJavascriptPackageManifestPartialFromNameVersion(name string, version str
 
 }
 
-func NewJavascriptPackageManifestPartial(body *[]byte, enableBlacklist bool) (JavascriptPackageManifestPartial, error) {
+func NewJavascriptPackageManifestPartial(body *[]byte, enableBlacklist bool, enableScripts bool) (JavascriptPackageManifestPartial, error) {
 
 	res := JavascriptPackageManifestPartial{
 		Name: "",
@@ -74,7 +78,7 @@ func NewJavascriptPackageManifestPartial(body *[]byte, enableBlacklist bool) (Ja
 			Range: VersionRangeNone,
 			Build: "",
 		},
-		Provider: PackageProviderDisk,
+		Provider: PackageProviderNpm,
 		Status:   PackageResolutionStatusSuccess,
 		// ExportsManifest: ExportsManifest{
 		// 	Source:      []string{},
@@ -89,7 +93,6 @@ func NewJavascriptPackageManifestPartial(body *[]byte, enableBlacklist bool) (Ja
 		// DevDependencyVersions:  []string{},
 	}
 	var err error
-
 	iter := jsoniter.ConfigFastest.BorrowIterator(*body)
 	var objectKey string
 	// var objectType
@@ -219,6 +222,37 @@ func NewJavascriptPackageManifestPartial(body *[]byte, enableBlacklist bool) (Ja
 					res.PeerDependencyNames, res.PeerDependencyVersions = res.processDependencyList(depsMap)
 				}
 
+			}
+		case "scripts":
+			{
+				if enableScripts {
+					res.ScriptKeys = make([]string, 0, 3)
+					res.ScriptValues = make([]string, 0, 3)
+					res.HasPostInstall = false
+
+					iter.ReadMapCB(func(iterator *jsoniter.Iterator, key string) bool {
+						res.ScriptKeys = append(res.ScriptKeys, key)
+						res.ScriptValues = append(res.ScriptValues, iter.ReadString())
+						if key == "postinstall" {
+							res.HasPostInstall = true
+						}
+						return true
+					})
+				} else {
+					iter.Skip()
+				}
+			}
+
+		case "bin":
+			{
+				res.BinKeys = make([]string, 0, 1)
+				res.BinValues = make([]string, 0, 1)
+
+				iter.ReadMapCB(func(iterator *jsoniter.Iterator, key string) bool {
+					res.BinKeys = append(res.BinKeys, key)
+					res.BinValues = append(res.BinValues, iter.ReadString())
+					return true
+				})
 			}
 		default:
 			{
@@ -374,6 +408,7 @@ func NewJavascriptPackageManifestWithError(name string, version string, status P
 
 func NormalizePackageVersionString(version string) string {
 	return strings.ToLower(strings.Trim(version, " \n"))
+
 }
 
 func NormalizePackageNameString(version string) string {
@@ -399,7 +434,7 @@ func NewVersionRange(input string) VersionRange {
 		return VersionRangeCaret
 	} else if strings.HasPrefix(input, "~") {
 		return VersionRangeTilda
-	} else if !strings.ContainsAny(input, ".0123456789") || strings.ContainsAny(input, "<>&|-+*=/") {
+	} else if !strings.ContainsAny(input, ".0123456789") || strings.ContainsAny(input, "<>&|-+*=/") || len(input) < 5 {
 		return VersionRangeComplex
 	} else {
 		return VersionRangeNone
@@ -451,6 +486,33 @@ func (v *VersionRange) Trim(input string) string {
 
 }
 
-// TODO:
-func (p *JavascriptPackageManifestPartial) SortDependencies() {
+func (p *JavascriptPackageManifestPartial) GeneratePackageHash() string {
+	allKeys := make([]string, 0, len(p.DependencyNames)+len(p.DevDependencyNames)+len(p.PeerDependencyNames))
+
+	for i, dep := range p.DependencyNames {
+		allKeys = append(allKeys, NewPackageManifestKey(dep, p.DependencyVersions[i]))
+	}
+
+	for i, dep := range p.DevDependencyNames {
+		allKeys = append(allKeys, NewPackageManifestKey(dep, p.DevDependencyVersions[i]))
+	}
+
+	for i, dep := range p.PeerDependencyNames {
+		allKeys = append(allKeys, NewPackageManifestKey(dep, p.PeerDependencyVersions[i]))
+	}
+
+	sort.Strings(allKeys)
+
+	return strconv.FormatUint(xxhash.Sum64String(strings.Join(allKeys, ",")), 16)
+}
+
+func (p PackageProvider) ToArchiveURL(name string, version string) string {
+	switch p {
+	case PackageProviderNpm:
+		{
+			return fmt.Sprintf("https://registry.npmjs.org/%s/-/%s-%s.tgz", name, name, version)
+		}
+	}
+
+	return ""
 }

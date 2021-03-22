@@ -26,7 +26,16 @@
       "mode": "debug",
       "buildFlags": "-tags=dev",
       "program": "${workspaceFolder}",
-      "args": ["json", "./fixtures/pkgjson-small.json"]
+      "args": [
+        "client",
+        "-p",
+        "./fixtures/pkgjson-small.json",
+        "-c",
+        "${workspaceFolder}/caches/pkgjson-small",
+        "--install",
+        "--resolve",
+        "--nuke"
+      ]
     },
     {
       "name": "Run server",
@@ -43,7 +52,15 @@
       "request": "launch",
       "mode": "debug",
       "program": "${workspaceFolder}",
-      "args": ["json", "./fixtures/react.json"]
+      "args": [
+        "client",
+        "-p",
+        "./fixtures/react.json",
+        "-c",
+        "${workspaceFolder}/caches/react",
+        "--install=true",
+        "--resolve=true"
+      ]
     },
     {
       "name": "Launch Package",

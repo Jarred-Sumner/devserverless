@@ -16,13 +16,12 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"log"
 
+	"github.com/jarred-sumner/devserverless/config"
 	"github.com/jarred-sumner/devserverless/resolver"
 	"github.com/jarred-sumner/devserverless/resolver/cache"
 	"github.com/jarred-sumner/devserverless/resolver/internal/server"
-	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	"github.com/spf13/cobra"
 )
 
@@ -37,30 +36,25 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("serve called")
 		port, _ := cmd.Flags().GetUint("port")
 		resolver.LogV("Started server on port http://localhost:%d", port)
-		registrar, err := NormalizeRegistrar(cmd)
+		err := config.Global.NormalizeRegistrar()
 
 		if err != nil {
 			cmd.PrintErr(err)
 			return
 		}
 
-		cachePath, err := cmd.PersistentFlags().GetString("cache")
-
 		if err != nil {
 			cmd.PrintErr(err)
 			return
 		}
 
-		cacheType := NormalizeCacheType(cachePath)
-
-		switch cacheType {
-		case cache.CacheTypeLocal:
+		switch config.Global.From {
+		case config.CacheTypeLocal:
 			{
-				store, err := cache.NewLocalPackageManifestStore(cachePath)
-				store.Store.RegistrarAPI = registrar
+				store, err := cache.NewLocalPackageManifestStore(config.Global.Cache)
+				store.Store.RegistrarAPI = config.Global.Registrar
 				if err != nil {
 					log.Fatal(err)
 					return
@@ -69,17 +63,17 @@ to quickly create a Cobra application.`,
 					log.Fatalf("Error in ListenAndServe: %s", err)
 				}
 			}
-		case cache.CacheTypeNone:
+		case config.CacheTypeNone:
 			{
 				store := cache.NewMemoryPackageManifestStore()
-				store.RegistrarAPI = registrar
+				store.RegistrarAPI = config.Global.Registrar
 				if err := server.StartServer(port, &store, nil); err != nil {
 					log.Fatalf("Error in ListenAndServe: %s", err)
 				}
 			}
 		default:
 			{
-				log.Fatalf("Unsupported cache  %s", cachePath)
+				log.Fatalf("Unsupported cache  %s", config.Global.Cache)
 			}
 		}
 
@@ -88,8 +82,6 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-
-	serveCmd.Flags().String("registrar", lockfile.JSRegistrarFormatterStringJSPM, "Where to load the package.json files from? Can be \"npm\", \"skypack\", \"jspm\", or an absolute URL where the first %s is the package name and the second %s is the version.")
 
 	// Here you will define your flags and configuration settings.
 

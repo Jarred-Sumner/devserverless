@@ -42,7 +42,6 @@ struct ExportsManifest {
   alphanumeric[] source;
   alphanumeric[] destination;
   BareField[] bareField;
-
 }
 
 struct ExportsManifestSingleton {
@@ -71,7 +70,9 @@ struct RawDependencyList {
 }
 
 struct JavascriptPackageManifest {
+  string hash;
   uint count;
+
 
   alphanumeric[] name;
   string[] version;
@@ -106,6 +107,14 @@ struct JavascriptPackageManifestPartial {
 
   alphanumeric[] devDependencyNames;
   alphanumeric[] devDependencyVersions;
+
+  string[] scriptKeys;
+  string[] scriptValues;
+
+  string[] binKeys;
+  string[] binValues;
+
+  bool hasPostInstall;
 }
 
 message JavascriptPackageRequest {

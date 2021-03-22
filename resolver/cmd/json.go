@@ -54,7 +54,7 @@ to quickly create a Cobra application.`,
 			cmd.PrintErr(err)
 		}
 
-		file, err := lockfile.NewJavascriptPackageManifestPartial(&jsonText, config.BLACKLIST_PACKAGES)
+		file, err := lockfile.NewJavascriptPackageManifestPartial(&jsonText, config.BLACKLIST_PACKAGES, true)
 
 		if err != nil {
 			cmd.Println("An error occurred while parsing " + pkgJsonPath)

@@ -15,8 +15,14 @@ limitations under the License.
 */
 package main
 
-import "github.com/jarred-sumner/devserverless/resolver/cmd"
+import (
+	"github.com/jarred-sumner/devserverless/config"
+	"github.com/jarred-sumner/devserverless/resolver/cmd"
+)
 
 func main() {
 	cmd.Execute()
+	if config.Profiler != nil {
+		config.Profiler.Stop()
+	}
 }

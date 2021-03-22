@@ -10,9 +10,16 @@ require (
 	github.com/dgraph-io/ristretto v0.0.4-0.20210122082011-bb5d392ed82d
 	github.com/fatih/color v1.10.0
 	github.com/gammazero/workerpool v1.1.1
+	github.com/golang/snappy v0.0.3 // indirect
 	github.com/jarred-sumner/peechy v0.0.0-20210315024149-faf1f51b095f
 	github.com/json-iterator/go v1.1.10
+	github.com/klauspost/compress v1.11.12 // indirect
+	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/mholt/archiver/v3 v3.5.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/otiai10/copy v1.5.0 // indirect
+	github.com/pierrec/lz4/v4 v4.1.4 // indirect
+	github.com/pkg/profile v1.5.0 // indirect
 	github.com/savsgio/atreugo/v11 v11.6.3
 	github.com/shamaton/msgpack v1.2.1 // indirect
 	github.com/shamaton/msgpackgen v0.1.2 // indirect
@@ -21,6 +28,7 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/tidwall/pretty v1.1.0
+	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/fasthttp v1.22.0
 	go.etcd.io/bbolt v1.3.5
