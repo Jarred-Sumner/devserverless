@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/jarred-sumner/devserverless/resolver/lockfile"
 	"github.com/jarred-sumner/peechy/buffer"
+
 	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/bytebufferpool"
 )
@@ -19,7 +20,7 @@ func loadFixture(loc string) lockfile.JavascriptPackageManifestPartial {
 	dir, _ := os.Getwd()
 	jsonText, _ := ioutil.ReadFile(path.Join(dir, loc))
 
-	file, _ := lockfile.NewJavascriptPackageManifestPartial(&jsonText, true)
+	file, _ := lockfile.NewJavascriptPackageManifestPartial(&jsonText, true, false)
 
 	return file
 }

@@ -107,7 +107,7 @@ func NewPackageInstaller(BaseFolder string, cacheFolder string, ctx *context.Con
 }
 
 func (i *PackageInstaller) Enqueue(manifest *lockfile.JavascriptPackageManifestPartial) {
-	key := lockfile.NewPackageManifestKey(manifest.Name, manifest.Version.Build)
+	key := lockfile.NewPackageManifestKey(manifest.Name, manifest.Version.Tag)
 	if _, exists := i.Keys.Load(key); exists {
 		return
 	}
@@ -116,15 +116,18 @@ func (i *PackageInstaller) Enqueue(manifest *lockfile.JavascriptPackageManifestP
 }
 
 func (i *PackageInstaller) DestinationPathForManifest(manifest *lockfile.JavascriptPackageManifestPartial) string {
-	return filepath.Join(i.NodeModulesFolder, manifest.Name)
+	s, _ := filepath.Abs(filepath.Join(i.NodeModulesFolder, manifest.Name))
+	return s
 }
 
 func (i *PackageInstaller) SourcePathForManifest(key string) string {
-	return filepath.Join(i.CacheFolder, key)
+	s, _ := filepath.Abs(filepath.Join(i.CacheFolder, key))
+	return s
 }
 
 func (i *PackageInstaller) TempPathForManifest(key string) string {
-	return filepath.Join(i.TempFolder, key)
+	s, _ := filepath.Abs(filepath.Join(i.TempFolder, key))
+	return s
 }
 
 func (i *PackageInstaller) IsPackageSourced(sourcePath string) bool {
@@ -133,8 +136,9 @@ func (i *PackageInstaller) IsPackageSourced(sourcePath string) bool {
 }
 
 func (i *PackageInstaller) enqueueInstall(job *InstallPackageJob) {
-	i.Waiter.Add(1)
 	job.Copier = &copier.CopyJob{}
+	// sourcePath := job.SourcePath
+	// tempPath := job.TempPath
 	i.CopyWorkers.Submit(func() {
 		job := job
 		job.CopyChan <- job.Copier.Run(job.TempPath, job.SourcePath, job.DestinationPath)
@@ -147,10 +151,9 @@ func (i *PackageInstaller) enqueueInstall(job *InstallPackageJob) {
 	} else {
 		job.Status = InstallPackageStatusSuccess
 	}
-	i.Waiter.Done()
+
 }
 func (i *PackageInstaller) enqueueFetch(installer *InstallPackageJob) {
-	i.Waiter.Add(1)
 	installer.Fetcher = &fetcher.PackageArchiveJob{
 		Input:  fetcher.NewPackageArchive(installer.Manifest, installer.TempPath),
 		Status: job.StatusQueued,
@@ -168,14 +171,8 @@ func (i *PackageInstaller) enqueueFetch(installer *InstallPackageJob) {
 
 	if err != nil {
 		installer.Status = InstallPackageStatusFail
-		i.Waiter.Done()
 		return
 	}
-	if installer.CopyChan == nil {
-		installer.CopyChan = make(chan error)
-	}
-	i.enqueueInstall(installer)
-	i.Waiter.Done()
 
 }
 
@@ -193,7 +190,7 @@ func (i *PackageInstaller) enqueue(manifest *lockfile.JavascriptPackageManifestP
 	installJob := InstallPackageJob{
 		Manifest:        manifest,
 		DestinationPath: destinationPath,
-		TempPath:        "",
+		TempPath:        i.TempPathForManifest(key),
 		SourcePath:      sourcePath,
 		Step:            InstallPackageStepFetchQueued,
 		Status:          InstallPackageStatusWaiting,
@@ -206,14 +203,28 @@ func (i *PackageInstaller) enqueue(manifest *lockfile.JavascriptPackageManifestP
 		installJob.Step = InstallPackageStepCopyQueued
 		installJob.CopyChan = make(chan error)
 		i.Jobs = append(i.Jobs, installJob)
-		// i.Waiter.Add(1)
-		go i.enqueueInstall(&installJob)
+		i.Waiter.Add(1)
+		go func(i *PackageInstaller, installJob *InstallPackageJob) {
+			i.enqueueInstall(installJob)
+			i.Waiter.Done()
+		}(i, &installJob)
 	} else {
-		installJob.TempPath = i.TempPathForManifest(key)
+		installJob.Step = InstallPackageStepFetchQueued
 		installJob.FetchChan = make(chan error)
 		i.Jobs = append(i.Jobs, installJob)
-		// i.Waiter.Add(1)
-		go i.enqueueFetch(&installJob)
+		i.Waiter.Add(1)
+		go func(i *PackageInstaller, installJob *InstallPackageJob) {
+			i.enqueueFetch(installJob)
+
+			if installJob.Error == nil {
+				if installJob.CopyChan == nil {
+					installJob.CopyChan = make(chan error)
+				}
+				i.enqueueInstall(installJob)
+			}
+			i.Waiter.Done()
+		}(i, &installJob)
+
 	}
 
 }

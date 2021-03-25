@@ -7,13 +7,31 @@ smol PackageProvider {
   tgz = 4;
   disk = 5;
   other = 6;
+  github = 7;
+}
+
+smol PackageVersionProtocol {
+  github_bare = 1;
+  github_dot_com = 2;
+  github_tarball = 3;
+  github_owner_repo = 4;
+  http = 5;
+  https = 6;
+  https_tarball = 7;
+  http_tarball = 8;
+  git = 9;
+  git_ssh = 10;
+  pathlike = 11;
+  default = 12;
 }
 
 smol VersionRange {
-  none = 1;
+  exact = 1;
   tilda = 2;
   caret = 3;
-  complex = 4;
+  range = 4;
+  unknown = 5;
+  wildcard = 6;
 }
 
 smol PackageResolutionStatus {
@@ -53,12 +71,10 @@ struct ExportsManifestSingleton {
 
 
 struct Version {
-  int major;
-  int minor;
-  int patch;
-  VersionRange range;
-  string pre;
-  string build;
+  PackageVersionProtocol protocol;
+  VersionRange versionRange;
+  alphanumeric originalTag;
+  alphanumeric tag;
 }
 
 alias timestamp = string;

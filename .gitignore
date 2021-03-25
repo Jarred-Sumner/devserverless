@@ -13,3 +13,10 @@ log.txt
 .duckcache
 /fixtures/node_modules
 /caches
+*.pprof
+
+**/*.log.txt
+**/*package-lock.json
+**/pnpm-lock.yaml
+**/sorted.json
+**/*.md.patch

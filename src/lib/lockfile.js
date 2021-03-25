@@ -5,12 +5,14 @@ const PackageProvider = {
   "4": 4,
   "5": 5,
   "6": 6,
+  "7": 7,
   "npm": 1,
   "git": 2,
   "https": 3,
   "tgz": 4,
   "disk": 5,
-  "other": 6
+  "other": 6,
+  "github": 7
 };
 const PackageProviderKeys = {
   "1": "npm",
@@ -19,32 +21,94 @@ const PackageProviderKeys = {
   "4": "tgz",
   "5": "disk",
   "6": "other",
+  "7": "github",
   "npm": "npm",
   "git": "git",
   "https": "https",
   "tgz": "tgz",
   "disk": "disk",
-  "other": "other"
+  "other": "other",
+  "github": "github"
+};
+const PackageVersionProtocol = {
+  "1": 1,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  "5": 5,
+  "6": 6,
+  "7": 7,
+  "8": 8,
+  "9": 9,
+  "10": 10,
+  "11": 11,
+  "12": 12,
+  "github_bare": 1,
+  "github_dot_com": 2,
+  "github_tarball": 3,
+  "github_owner_repo": 4,
+  "http": 5,
+  "https": 6,
+  "https_tarball": 7,
+  "http_tarball": 8,
+  "git": 9,
+  "git_ssh": 10,
+  "pathlike": 11,
+  "default": 12
+};
+const PackageVersionProtocolKeys = {
+  "1": "github_bare",
+  "2": "github_dot_com",
+  "3": "github_tarball",
+  "4": "github_owner_repo",
+  "5": "http",
+  "6": "https",
+  "7": "https_tarball",
+  "8": "http_tarball",
+  "9": "git",
+  "10": "git_ssh",
+  "11": "pathlike",
+  "12": "default",
+  "github_bare": "github_bare",
+  "github_dot_com": "github_dot_com",
+  "github_tarball": "github_tarball",
+  "github_owner_repo": "github_owner_repo",
+  "http": "http",
+  "https": "https",
+  "https_tarball": "https_tarball",
+  "http_tarball": "http_tarball",
+  "git": "git",
+  "git_ssh": "git_ssh",
+  "pathlike": "pathlike",
+  "default": "default"
 };
 const VersionRange = {
   "1": 1,
   "2": 2,
   "3": 3,
   "4": 4,
-  "none": 1,
+  "5": 5,
+  "6": 6,
+  "exact": 1,
   "tilda": 2,
   "caret": 3,
-  "complex": 4
+  "range": 4,
+  "unknown": 5,
+  "wildcard": 6
 };
 const VersionRangeKeys = {
-  "1": "none",
+  "1": "exact",
   "2": "tilda",
   "3": "caret",
-  "4": "complex",
-  "none": "none",
+  "4": "range",
+  "5": "unknown",
+  "6": "wildcard",
+  "exact": "exact",
   "tilda": "tilda",
   "caret": "caret",
-  "complex": "complex"
+  "range": "range",
+  "unknown": "unknown",
+  "wildcard": "wildcard"
 };
 const PackageResolutionStatus = {
   "1": 1,
@@ -248,59 +312,45 @@ bb.writeByte(encoded);
 function decodeVersion(bb) {
   var result = {};
 
-  result["major"] = bb.readVarInt();
-  result["minor"] = bb.readVarInt();
-  result["patch"] = bb.readVarInt();
-  result["range"] = VersionRange[bb.readByte()];
-  result["pre"] = bb.readString();
-  result["build"] = bb.readString();
+  result["protocol"] = PackageVersionProtocol[bb.readByte()];
+  result["versionRange"] = VersionRange[bb.readByte()];
+  result["originalTag"] = bb.readAlphanumeric();
+  result["tag"] = bb.readAlphanumeric();
   return result;
 }
 
 function encodeVersion(message, bb) {
 
-  var value = message["major"];
+  var value = message["protocol"];
   if (value != null) {
-    bb.writeVarInt(value);
+    var encoded = PackageVersionProtocol[value];
+if (encoded === void 0) throw new Error("Invalid value " + JSON.stringify(value) + " for enum \"PackageVersionProtocol\"");
+bb.writeByte(encoded);
   } else {
-    throw new Error("Missing required field \"major\"");
+    throw new Error("Missing required field \"protocol\"");
   }
 
-  var value = message["minor"];
-  if (value != null) {
-    bb.writeVarInt(value);
-  } else {
-    throw new Error("Missing required field \"minor\"");
-  }
-
-  var value = message["patch"];
-  if (value != null) {
-    bb.writeVarInt(value);
-  } else {
-    throw new Error("Missing required field \"patch\"");
-  }
-
-  var value = message["range"];
+  var value = message["versionRange"];
   if (value != null) {
     var encoded = VersionRange[value];
 if (encoded === void 0) throw new Error("Invalid value " + JSON.stringify(value) + " for enum \"VersionRange\"");
 bb.writeByte(encoded);
   } else {
-    throw new Error("Missing required field \"range\"");
+    throw new Error("Missing required field \"versionRange\"");
   }
 
-  var value = message["pre"];
+  var value = message["originalTag"];
   if (value != null) {
-    bb.writeString(value);
+    bb.writeAlphanumeric(value);
   } else {
-    throw new Error("Missing required field \"pre\"");
+    throw new Error("Missing required field \"originalTag\"");
   }
 
-  var value = message["build"];
+  var value = message["tag"];
   if (value != null) {
-    bb.writeString(value);
+    bb.writeAlphanumeric(value);
   } else {
-    throw new Error("Missing required field \"build\"");
+    throw new Error("Missing required field \"tag\"");
   }
 
 }
@@ -870,6 +920,8 @@ bb.writeVarUint(encoded);
 
 export { PackageProvider }
 export { PackageProviderKeys }
+export { PackageVersionProtocol }
+export { PackageVersionProtocolKeys }
 export { VersionRange }
 export { VersionRangeKeys }
 export { PackageResolutionStatus }

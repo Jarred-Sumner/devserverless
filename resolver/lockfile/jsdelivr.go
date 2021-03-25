@@ -14,7 +14,7 @@ type RawJSDelivrPackageData struct {
 	Versions []string          `json:"versions"`
 }
 
-func (p *JSDelivrPackageData) satisfying(version string) (string, error) {
+func (p *JSDelivrPackageData) Satisfying(version string) (string, error) {
 	if version == "*" {
 		version = "latest"
 	}
@@ -23,27 +23,13 @@ func (p *JSDelivrPackageData) satisfying(version string) (string, error) {
 		version = p.Tags[version]
 	}
 
-	vr := NewVersionRange(version)
+	vr := NewVersionRange(version, len(version))
 	var semverRange semver.Range
 	var parsedVersion semver.Version
 	var err error
 
 	switch vr {
-	case VersionRangeCaret:
-		{
-			semverRange, err = semver.ParseRange(version)
-		}
-	case VersionRangeTilda:
-		{
-			semverRange, err = semver.ParseRange(version)
-		}
-	case VersionRangeComplex:
-		{
-
-			semverRange, err = semver.ParseRange(version)
-		}
-
-	case VersionRangeNone:
+	case VersionRangeExact:
 		{
 			parsedVersion, err = semver.Parse(version)
 
@@ -56,7 +42,7 @@ func (p *JSDelivrPackageData) satisfying(version string) (string, error) {
 		}
 	default:
 		{
-			return version, nil
+			semverRange, err = semver.ParseRange(version)
 		}
 	}
 
@@ -64,7 +50,7 @@ func (p *JSDelivrPackageData) satisfying(version string) (string, error) {
 		return version, err
 	}
 
-	if vr > VersionRangeNone {
+	if vr > VersionRangeExact && len(p.Versions) > 0 {
 		// Iterate through backwards because we want to find the latest satisfying version
 		for i := len(p.Versions) - 1; i > -1; i-- {
 			if semverRange(p.Versions[i]) {

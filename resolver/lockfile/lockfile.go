@@ -6,7 +6,7 @@ import (
  "encoding/json"
  "github.com/jarred-sumner/peechy/buffer"
 )
-type PackageProvider uint
+type PackageProvider byte
 
 const (
   PackageProviderNpm PackageProvider = 1
@@ -15,6 +15,7 @@ const (
   PackageProviderTgz PackageProvider = 4
   PackageProviderDisk PackageProvider = 5
   PackageProviderOther PackageProvider = 6
+  PackageProviderGithub PackageProvider = 7
 
 )
 
@@ -25,6 +26,7 @@ var PackageProviderToString = map[PackageProvider]string{
   PackageProviderTgz: "PackageProviderTgz",
   PackageProviderDisk: "PackageProviderDisk",
   PackageProviderOther: "PackageProviderOther",
+  PackageProviderGithub: "PackageProviderGithub",
 
 }
 
@@ -35,6 +37,7 @@ var PackageProviderToID = map[string]PackageProvider{
   "PackageProviderTgz": PackageProviderTgz,
   "PackageProviderDisk": PackageProviderDisk,
   "PackageProviderOther": PackageProviderOther,
+  "PackageProviderGithub": PackageProviderGithub,
 
 }
 
@@ -60,29 +63,107 @@ func (s *PackageProvider) UnmarshalJSON(b []byte) error {
 }
 
         
-type VersionRange uint
+type PackageVersionProtocol byte
 
 const (
-  VersionRangeNone VersionRange = 1
+  PackageVersionProtocolGithubBare PackageVersionProtocol = 1
+  PackageVersionProtocolGithubDotCom PackageVersionProtocol = 2
+  PackageVersionProtocolGithubTarball PackageVersionProtocol = 3
+  PackageVersionProtocolGithubOwnerRepo PackageVersionProtocol = 4
+  PackageVersionProtocolHttp PackageVersionProtocol = 5
+  PackageVersionProtocolHttps PackageVersionProtocol = 6
+  PackageVersionProtocolHttpsTarball PackageVersionProtocol = 7
+  PackageVersionProtocolHttpTarball PackageVersionProtocol = 8
+  PackageVersionProtocolGit PackageVersionProtocol = 9
+  PackageVersionProtocolGitSsh PackageVersionProtocol = 10
+  PackageVersionProtocolPathlike PackageVersionProtocol = 11
+  PackageVersionProtocolDefault PackageVersionProtocol = 12
+
+)
+
+var PackageVersionProtocolToString = map[PackageVersionProtocol]string{
+  PackageVersionProtocolGithubBare: "PackageVersionProtocolGithubBare",
+  PackageVersionProtocolGithubDotCom: "PackageVersionProtocolGithubDotCom",
+  PackageVersionProtocolGithubTarball: "PackageVersionProtocolGithubTarball",
+  PackageVersionProtocolGithubOwnerRepo: "PackageVersionProtocolGithubOwnerRepo",
+  PackageVersionProtocolHttp: "PackageVersionProtocolHttp",
+  PackageVersionProtocolHttps: "PackageVersionProtocolHttps",
+  PackageVersionProtocolHttpsTarball: "PackageVersionProtocolHttpsTarball",
+  PackageVersionProtocolHttpTarball: "PackageVersionProtocolHttpTarball",
+  PackageVersionProtocolGit: "PackageVersionProtocolGit",
+  PackageVersionProtocolGitSsh: "PackageVersionProtocolGitSsh",
+  PackageVersionProtocolPathlike: "PackageVersionProtocolPathlike",
+  PackageVersionProtocolDefault: "PackageVersionProtocolDefault",
+
+}
+
+var PackageVersionProtocolToID = map[string]PackageVersionProtocol{
+  "PackageVersionProtocolGithubBare": PackageVersionProtocolGithubBare,
+  "PackageVersionProtocolGithubDotCom": PackageVersionProtocolGithubDotCom,
+  "PackageVersionProtocolGithubTarball": PackageVersionProtocolGithubTarball,
+  "PackageVersionProtocolGithubOwnerRepo": PackageVersionProtocolGithubOwnerRepo,
+  "PackageVersionProtocolHttp": PackageVersionProtocolHttp,
+  "PackageVersionProtocolHttps": PackageVersionProtocolHttps,
+  "PackageVersionProtocolHttpsTarball": PackageVersionProtocolHttpsTarball,
+  "PackageVersionProtocolHttpTarball": PackageVersionProtocolHttpTarball,
+  "PackageVersionProtocolGit": PackageVersionProtocolGit,
+  "PackageVersionProtocolGitSsh": PackageVersionProtocolGitSsh,
+  "PackageVersionProtocolPathlike": PackageVersionProtocolPathlike,
+  "PackageVersionProtocolDefault": PackageVersionProtocolDefault,
+
+}
+
+
+// MarshalJSON marshals the enum as a quoted json string
+func (s PackageVersionProtocol) MarshalJSON() ([]byte, error) {
+  buffer := bytes.NewBufferString(`"`)
+  buffer.WriteString(PackageVersionProtocolToString[s])
+  buffer.WriteString(`"`)
+  return buffer.Bytes(), nil
+}
+
+// UnmarshalJSON unmashals a quoted json string to the enum value
+func (s *PackageVersionProtocol) UnmarshalJSON(b []byte) error {
+  var j string
+  err := json.Unmarshal(b, &j)
+  if err != nil {
+    return err
+  }
+  // Note that if the string cannot be found then it will be set to the zero value, 'Created' in this case.
+  *s = PackageVersionProtocolToID[j]
+  return nil
+}
+
+        
+type VersionRange byte
+
+const (
+  VersionRangeExact VersionRange = 1
   VersionRangeTilda VersionRange = 2
   VersionRangeCaret VersionRange = 3
-  VersionRangeComplex VersionRange = 4
+  VersionRangeRange VersionRange = 4
+  VersionRangeUnknown VersionRange = 5
+  VersionRangeWildcard VersionRange = 6
 
 )
 
 var VersionRangeToString = map[VersionRange]string{
-  VersionRangeNone: "VersionRangeNone",
+  VersionRangeExact: "VersionRangeExact",
   VersionRangeTilda: "VersionRangeTilda",
   VersionRangeCaret: "VersionRangeCaret",
-  VersionRangeComplex: "VersionRangeComplex",
+  VersionRangeRange: "VersionRangeRange",
+  VersionRangeUnknown: "VersionRangeUnknown",
+  VersionRangeWildcard: "VersionRangeWildcard",
 
 }
 
 var VersionRangeToID = map[string]VersionRange{
-  "VersionRangeNone": VersionRangeNone,
+  "VersionRangeExact": VersionRangeExact,
   "VersionRangeTilda": VersionRangeTilda,
   "VersionRangeCaret": VersionRangeCaret,
-  "VersionRangeComplex": VersionRangeComplex,
+  "VersionRangeRange": VersionRangeRange,
+  "VersionRangeUnknown": VersionRangeUnknown,
+  "VersionRangeWildcard": VersionRangeWildcard,
 
 }
 
@@ -108,7 +189,7 @@ func (s *VersionRange) UnmarshalJSON(b []byte) error {
 }
 
         
-type PackageResolutionStatus uint
+type PackageResolutionStatus byte
 
 const (
   PackageResolutionStatusSuccess PackageResolutionStatus = 1
@@ -168,7 +249,7 @@ func (s *PackageResolutionStatus) UnmarshalJSON(b []byte) error {
 }
 
         
-type BareField uint
+type BareField byte
 
 const (
   BareFieldOtherField BareField = 1
@@ -324,39 +405,31 @@ func (i *ExportsManifestSingleton) Encode(buf *buffer.Buffer) error {
 }
 
 type Version struct {
-Major    int     `json:"major" redis:"major"`
-Minor    int     `json:"minor" redis:"minor"`
-Patch    int     `json:"patch" redis:"patch"`
-Range    VersionRange     `json:"range" redis:"range"`
-Pre    string     `json:"pre" redis:"pre"`
-Build    string     `json:"build" redis:"build"`
+Protocol    PackageVersionProtocol     `json:"protocol" redis:"protocol"`
+VersionRange    VersionRange     `json:"versionRange" redis:"versionRange"`
+OriginalTag    string     `json:"originalTag" redis:"originalTag"`
+Tag    string     `json:"tag" redis:"tag"`
 }
 
 func DecodeVersion(buf *buffer.Buffer) (Version, error) {
    result := Version{}
 
-  result.Major = buf.ReadVarInt()
-  result.Minor = buf.ReadVarInt()
-  result.Patch = buf.ReadVarInt()
-  result.Range = VersionRange(buf.ReadByte())
-  result.Pre = buf.ReadString()
-  result.Build = buf.ReadString()
+  result.Protocol = PackageVersionProtocol(buf.ReadByte())
+  result.VersionRange = VersionRange(buf.ReadByte())
+  result.OriginalTag = buf.ReadAlphanumeric()
+  result.Tag = buf.ReadAlphanumeric()
   return result, nil;
 }
 
 func (i *Version) Encode(buf *buffer.Buffer) error {
 
-    buf.WriteVarInt(i.Major);
+    buf.WriteByte(byte(i.Protocol))
 
-    buf.WriteVarInt(i.Minor);
+    buf.WriteByte(byte(i.VersionRange))
 
-    buf.WriteVarInt(i.Patch);
+    buf.WriteAlphanumeric(i.OriginalTag);
 
-    buf.WriteByte(byte(i.Range))
-
-    buf.WriteString(i.Pre);
-
-    buf.WriteString(i.Build);
+    buf.WriteAlphanumeric(i.Tag);
   return nil
 }
 

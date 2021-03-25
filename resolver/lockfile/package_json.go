@@ -2,6 +2,7 @@ package lockfile
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -9,27 +10,29 @@ import (
 	semver "github.com/Jarred-Sumner/semver/v4"
 	"github.com/cespare/xxhash"
 	"github.com/jarred-sumner/devserverless/config"
+	"github.com/jarred-sumner/peechy/buffer"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/valyala/bytebufferpool"
 )
 
 var BlacklistedPackagePrefixes = [...]string{
-	"@types/",
-	"@babel/core",
-	"@babel/plugin-",
-	"@babel/preset-",
-	"@babel/transform-",
-	"@jest/",
-	"jest",
-	"webpack",
-	"@typescript",
-	"typescript",
-	"babel-plugin-",
-	"rollup",
-	"@rollup",
-	"eslint",
-	"babel-preset",
-	"babel-loader",
-	"webpack-plugin",
+	// "@types/",
+	// "@babel/core",
+	// "@babel/plugin-",
+	// "@babel/preset-",
+	// "@babel/transform-",
+	// "@jest/",
+	// "jest",
+	// "webpack",
+	// "@typescript",
+	// "typescript",
+	// "babel-plugin-",
+	// "rollup",
+	// "@rollup",
+	// "eslint",
+	// "babel-preset",
+	// "babel-loader",
+	// "webpack-plugin",
 }
 
 // ASCII 15
@@ -38,16 +41,21 @@ const BareIdentityToken = ""
 // ASCII 16
 const BareIndexToken = ""
 
+func LoadPackageManifestFromFilepath(input string) (*JavascriptPackageManifest, error) {
+	manifestB, err := os.ReadFile(input)
+	if err != nil {
+		return nil, err
+	}
+	buf := buffer.Buffer{
+		Bytes: &bytebufferpool.ByteBuffer{B: manifestB},
+	}
+	manifest, _ := DecodeJavascriptPackageManifest(&buf)
+	return &manifest, err
+}
+
 func NewJavascriptPackageManifestPartialFromNameVersion(name string, version string, enableBlacklist bool) JavascriptPackageManifestPartial {
 	return JavascriptPackageManifestPartial{
-		Name: "temp",
-		Version: Version{
-			Major: 0,
-			Minor: 0,
-			Patch: 0,
-			Range: VersionRangeNone,
-			Build: "",
-		},
+		Name:               "temp",
 		Provider:           PackageProviderDisk,
 		Status:             PackageResolutionStatusSuccess,
 		DependencyNames:    []string{name},
@@ -70,14 +78,7 @@ func NewJavascriptPackageManifestPartialFromNameVersion(name string, version str
 func NewJavascriptPackageManifestPartial(body *[]byte, enableBlacklist bool, enableScripts bool) (JavascriptPackageManifestPartial, error) {
 
 	res := JavascriptPackageManifestPartial{
-		Name: "",
-		Version: Version{
-			Major: 0,
-			Minor: 0,
-			Patch: 0,
-			Range: VersionRangeNone,
-			Build: "",
-		},
+		Name:     "",
 		Provider: PackageProviderNpm,
 		Status:   PackageResolutionStatusSuccess,
 		// ExportsManifest: ExportsManifest{
@@ -344,8 +345,6 @@ func (p *JavascriptPackageManifestPartial) processDependencyList(list map[string
 	keys := make([]string, 0, len(list))
 	values := make([]string, 0, len(list))
 
-	var err error
-	var tag semver.Version
 	var normalizedVersion string
 
 	if config.BLACKLIST_PACKAGES {
@@ -360,12 +359,13 @@ func (p *JavascriptPackageManifestPartial) processDependencyList(list map[string
 
 			keys = append(keys, normalizedName)
 			normalizedVersion = NormalizePackageVersionString(value)
+			length := len(normalizedVersion)
 
-			if NewVersionRange(normalizedVersion) == VersionRangeNone {
-				tag, err = semver.Parse(normalizedVersion)
+			if NewVersionRange(normalizedVersion, length) == VersionRangeExact {
+				tag := semver.CreateVersionStringFromWildcard(normalizedVersion)
 
-				if err != nil {
-					values = append(values, tag.String())
+				if tag != "" {
+					values = append(values, tag)
 				} else {
 					values = append(values, normalizedVersion)
 				}
@@ -376,14 +376,17 @@ func (p *JavascriptPackageManifestPartial) processDependencyList(list map[string
 		}
 	} else {
 		for key, value := range list {
-			keys = append(keys, NormalizePackageNameString(key))
+			normalizedName := NormalizePackageNameString(key)
+
+			keys = append(keys, normalizedName)
 			normalizedVersion = NormalizePackageVersionString(value)
+			length := len(normalizedVersion)
 
-			if NewVersionRange(normalizedVersion) == VersionRangeNone {
-				tag, err = semver.Parse(normalizedVersion)
+			if NewVersionRange(normalizedVersion, length) == VersionRangeExact {
+				tag := semver.CreateVersionStringFromWildcard(normalizedVersion)
 
-				if err != nil {
-					values = append(values, tag.String())
+				if tag != "" {
+					values = append(values, tag)
 				} else {
 					values = append(values, normalizedVersion)
 				}
@@ -407,7 +410,7 @@ func NewJavascriptPackageManifestWithError(name string, version string, status P
 }
 
 func NormalizePackageVersionString(version string) string {
-	return strings.ToLower(strings.Trim(version, " \n"))
+	return strings.ToLower(strings.TrimLeft(strings.Trim(version, " \n"), "v"))
 
 }
 
@@ -429,44 +432,13 @@ func IsPackageNameBlacklisted(name string) bool {
 	return false
 }
 
-func NewVersionRange(input string) VersionRange {
-	if strings.HasPrefix(input, "^") {
-		return VersionRangeCaret
-	} else if strings.HasPrefix(input, "~") {
-		return VersionRangeTilda
-	} else if !strings.ContainsAny(input, ".0123456789") || strings.ContainsAny(input, "<>&|-+*=/") || len(input) < 5 {
-		return VersionRangeComplex
-	} else {
-		return VersionRangeNone
-	}
-}
-
 func (p *JavascriptPackageManifestPartial) SetVersion(input string) {
-	var normalizedVersion string
-	normalizedVersion = NormalizePackageVersionString(input)
-
-	p.Version.Range = NewVersionRange(normalizedVersion)
-
-	normalizedVersion = p.Version.Range.Trim(normalizedVersion)
-
-	tag, err := semver.New(NormalizePackageVersionString(normalizedVersion))
-	if err != nil {
-		p.Version.Build = input
-		return
-	}
-
-	p.Version.Major = int(tag.Major)
-	p.Version.Minor = int(tag.Minor)
-	p.Version.Patch = int(tag.Patch)
-	if len(p.Version.Pre) > 0 {
-		p.Version.Pre = tag.Pre[0].VersionStr
-	}
-	p.Version.Build = NormalizePackageVersionString(tag.String())
+	NewVersion(input, p)
 }
 
 func (v *VersionRange) Trim(input string) string {
 	switch *v {
-	case VersionRangeNone:
+	case VersionRangeExact:
 		{
 			return input
 		}

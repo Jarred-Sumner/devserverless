@@ -37,6 +37,10 @@ type PackageAliasCache interface {
 
 func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName string) (*JSDelivrPackageData, error) {
 	logger := store.Logger.With(zap.String("pkg", name))
+	var _logger *zap.Logger
+	var err error
+	var result JSDelivrPackageData
+	var body []byte
 
 	req := fasthttp.AcquireRequest()
 	resp := fasthttp.AcquireResponse()
@@ -45,18 +49,17 @@ func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName 
 	defer fasthttp.ReleaseRequest(req)
 
 	req.SetRequestURI(fmt.Sprintf(JSDelivrMetadataFormatterString, name))
-	var _logger *zap.Logger
+
 	_logger = (*logger).With(zap.String("url", req.URI().String()), zap.String("name", name), zap.String("parent", parentName))
 	_logger.Info("GET metadata")
 
 	// log.Println(fmt.Sprintf(packageJsonFormatterString, name, version))
-	var err error
+
 	err = store.JSDelivrClient.DoDeadline(req, resp, time.Now().Add(time.Minute))
 
 	statusCode := resp.StatusCode()
 	_logger = _logger.With(zap.Int("statusCode", statusCode))
 	rawResult := RawJSDelivrPackageData{}
-	var result JSDelivrPackageData
 
 	if err != nil {
 		_logger.Error("HTTP error", zap.Error(err))
@@ -68,7 +71,7 @@ func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName 
 	switch statusCode {
 	case 200:
 		{
-			var body []byte
+
 			encoding := string(resp.Header.Peek(fasthttp.HeaderContentEncoding))
 			switch encoding {
 			case "deflate":
@@ -226,7 +229,7 @@ func (s *PackageManifestStore) flattenDependencies(pkg *JavascriptPackageManifes
 		Waiter:           &sync.WaitGroup{},
 	}
 
-	pack.FetchDependencies(pkg, false)
+	pack.FetchDependencies(pkg, true)
 	pack.Waiter.Wait()
 
 	defer logger.Info("Complete", zap.Uint64("successCount", pack.PackageCount), zap.Uint64("errorCount", pack.ErrorPackageCount), zap.Duration("elapsed", time.Since(start)))
@@ -285,15 +288,55 @@ func (pack *PackageFlatPack) FetchDependencies(res *JavascriptPackageManifestPar
 // }
 
 func (p *PackageFlatPack) enqueue(name string, version string, parentName string) {
+	versionLength := len(version)
+	versionRange := NewVersionRange(version, versionLength)
+	protocol := NewPackageVersionProtocol(version, versionLength)
+	key := NewPackageManifestKey(name, protocol.ExtractTag(version))
 
-	var err error
+	switch protocol {
+	case PackageVersionProtocolDefault:
+		{
+			p.enqueueDefaultProtocol(name, version, parentName, versionRange, key)
+		}
+	case PackageVersionProtocolGithubBare, PackageVersionProtocolGithubDotCom, PackageVersionProtocolGithubTarball, PackageVersionProtocolGithubOwnerRepo:
+		{
+			p.enqueueGithubPackage(name, parentName, version, versionRange, protocol, key)
+		}
 
-	denormalizedVersion := version
-	versionRange := NewVersionRange(version)
+	}
+
+}
+
+func (p *PackageFlatPack) enqueueGithubPackage(name string, parentName string, version string, versionRange VersionRange, protocol PackageVersionProtocol, key string) {
+
+	if p.Has(key) {
+		manifest, exists := p.store.Manifests.GetKey(key)
+		if exists && p.store.Installer != nil && manifest.Status == PackageResolutionStatusSuccess {
+			p.store.Installer.Enqueue(manifest)
+		}
+		return
+	}
+
+	manifest, exists := p.store.Manifests.GetKey(key)
+	if exists {
+		isSuccess := manifest.Status == PackageResolutionStatusSuccess
+		p.Append(key, isSuccess)
+		if p.store.Installer != nil && manifest.Status == PackageResolutionStatusSuccess {
+			p.store.Installer.Enqueue(manifest)
+		}
+		atomic.AddUint64(&p.PackageCount, 1)
+		p.FetchDependencies(manifest, false)
+		// pkgSuccessCount++
+		return
+	}
+
+	p.EnqueueFetchPackageJSON(key, name, version, p.Waiter, parentName, protocol)
+}
+
+func (p *PackageFlatPack) enqueueDefaultProtocol(name string, version string, parentName string, versionRange VersionRange, key string) {
 	s := p.store
-	key := NewPackageManifestKey(name, version)
-
-	if versionRange != VersionRangeNone {
+	var err error
+	if versionRange != VersionRangeExact {
 		aliasVersion, hasAlias := s.Aliases.Get(key)
 		if !hasAlias {
 			metadata, hasMetadata := s.Ranges.Get(name)
@@ -302,7 +345,7 @@ func (p *PackageFlatPack) enqueue(name string, version string, parentName string
 				w := p.Waiter
 				w.Add(1)
 
-				p.EnqueueFetchPackageMetadata(name, denormalizedVersion, parentName)
+				p.EnqueueFetchPackageMetadata(name, version, parentName)
 
 				s.Emitter.SubscribeOnceAsync(name, func() {
 					p := p
@@ -319,14 +362,14 @@ func (p *PackageFlatPack) enqueue(name string, version string, parentName string
 				return
 			}
 
-			version, err = metadata.satisfying(version)
+			version, err = metadata.Satisfying(version)
 			s.Aliases.Put(key, version)
 		} else {
 			version = aliasVersion
 		}
 
 		if err != nil || version == "" {
-			s.Logger.Debug("No matching version found", zap.String("name", name), zap.String("version", denormalizedVersion), zap.String("parent", parentName))
+			s.Logger.Debug("No matching version found", zap.String("name", name), zap.String("version", version), zap.String("parent", parentName))
 			manifest := JavascriptPackageManifestPartial{
 				Name: name,
 			}
@@ -363,10 +406,11 @@ func (p *PackageFlatPack) enqueue(name string, version string, parentName string
 		return
 	}
 
-	p.EnqueueFetchPackageJSON(key, name, version, p.Waiter, parentName)
+	p.EnqueueFetchPackageJSON(key, name, version, p.Waiter, parentName, PackageVersionProtocolDefault)
 }
 
-func (p *PackageFlatPack) EnqueueFetchPackageJSON(key string, name string, version string, w *sync.WaitGroup, parentName string) {
+func (p *PackageFlatPack) EnqueueFetchPackageJSON(key string, name string, version string, w *sync.WaitGroup, parentName string, protocol PackageVersionProtocol) {
+
 	s := p.store
 
 	w.Add(1)
@@ -396,6 +440,7 @@ func (p *PackageFlatPack) EnqueueFetchPackageJSON(key string, name string, versi
 		s.PackageJSONWorkers.Submit(func() {
 			key := key
 			name := name
+			protocol := protocol
 			version := version
 			parentName := parentName
 
@@ -403,14 +448,14 @@ func (p *PackageFlatPack) EnqueueFetchPackageJSON(key string, name string, versi
 
 			p := p
 			s := s
-			res, err := s.FetchPackageJSON(name, version, parentName)
+			res, err := s.FetchPackageJSON(name, version, parentName, protocol)
 
 			if err == nil {
 				p.FetchDependencies(res, false)
 				s.Emitter.Publish(key, resultStruct{value: res, success: true})
 
 			} else {
-				defer s.Emitter.Publish(key, errorStruct)
+				s.Emitter.Publish(key, errorStruct)
 			}
 		})
 	}
@@ -434,7 +479,6 @@ func (p *PackageFlatPack) EnqueueFetchPackageMetadata(name string, pendingVersio
 
 	if isNew {
 		p.Logger.Info("Enqueue metadata", zap.String("name", name))
-
 		s.MetadataWorkers.Submit(func() {
 
 			name := name
@@ -574,14 +618,15 @@ func (s *PackageFlatPack) appendDependencies(pkg *JavascriptPackageManifestParti
 			full.ExportsManifest.Destination = append(full.ExportsManifest.Destination, manifest.ExportsManifest.Destination...)
 			full.ExportsManifest.Source = append(full.ExportsManifest.Source, manifest.ExportsManifest.Source...)
 			full.Name[index] = manifest.Name
-			full.Version[index] = manifest.Version.Build
+			full.Version[index] = manifest.Version.Tag
 
 			addedDepsCount := uint(0)
 			for i, depName := range manifest.DependencyNames {
 				depVersion := manifest.DependencyVersions[i]
 				depKey := NewPackageManifestKey(depName, depVersion)
+				length := len(depVersion)
 
-				if NewVersionRange(depVersion) != VersionRangeNone {
+				if NewVersionRange(depVersion, length) != VersionRangeExact {
 					aliasKey, ok := s.store.Aliases.Get(NewPackageManifestKey(depName, depVersion))
 					if ok {
 						depKey = NewPackageManifestKey(depName, aliasKey)
@@ -599,8 +644,9 @@ func (s *PackageFlatPack) appendDependencies(pkg *JavascriptPackageManifestParti
 			for i, depName := range manifest.PeerDependencyNames {
 				depVersion := manifest.PeerDependencyVersions[i]
 				depKey := NewPackageManifestKey(depName, depVersion)
+				length := len(depVersion)
 
-				if NewVersionRange(depVersion) != VersionRangeNone {
+				if NewVersionRange(depVersion, length) != VersionRangeExact {
 					aliasKey, ok := s.store.Aliases.Get(NewPackageManifestKey(depName, depVersion))
 					if ok {
 						depKey = NewPackageManifestKey(depName, aliasKey)
@@ -644,137 +690,15 @@ func (s *PackageManifestStore) ResolveDependencies(pkg *JavascriptPackageManifes
 	return list, err
 }
 
-func (store *PackageManifestStore) FetchPackageJSON(name string, version string, parentName string) (*JavascriptPackageManifestPartial, error) {
-	_req := fasthttp.AcquireRequest()
-	_resp := fasthttp.AcquireResponse()
-
-	defer fasthttp.ReleaseResponse(_resp)
-	defer fasthttp.ReleaseRequest(_req)
-	req := _req
-	resp := _resp
-
-	req.SetRequestURI(store.RegistrarAPI.PackageJSON(name, version))
-	var _logger *zap.Logger
-	_logger = store.Logger.With(zap.String("url", req.URI().String()), zap.String("name", name), zap.String("version", version), zap.String("parent", parentName))
-	_logger.Info("GET Dependency")
-
-	// log.Println(fmt.Sprintf(packageJsonFormatterString, name, version))
-	var err error
-	err = store.NPMClient.DoDeadline(req, resp, time.Now().Add(time.Minute))
-	statusCode := resp.StatusCode()
-	var loc string
-	if statusCode == 302 || statusCode == 301 {
-		loc = string(resp.Header.Peek("Location"))
-		if len(loc) > 0 {
-			_req := fasthttp.AcquireRequest()
-			uri := fasthttp.AcquireURI()
-			uri.Update(store.RegistrarAPI.PackageJSON(name, version))
-			uri.Update(loc)
-			_req.SetRequestURI(uri.String())
-			fasthttp.ReleaseURI(uri)
-			defer fasthttp.ReleaseRequest(_req)
-			defer fasthttp.ReleaseResponse(_resp)
-			_resp = fasthttp.AcquireResponse()
-
-			req = _req
-			resp = _resp
-
-			err = store.NPMClient.DoDeadline(_req, _resp, time.Now().Add(time.Minute))
-			statusCode = resp.StatusCode()
+func (store *PackageManifestStore) FetchPackageJSON(name string, version string, parentName string, protocol PackageVersionProtocol) (*JavascriptPackageManifestPartial, error) {
+	switch protocol {
+	case PackageVersionProtocolGithubBare, PackageVersionProtocolGithubDotCom, PackageVersionProtocolGithubTarball, PackageVersionProtocolGithubOwnerRepo:
+		{
+			uri, _ := protocol.ExtractJSDelivrGithubPackageJSONURL(version)
+			return store.fetchFromGithub(name, version, parentName, uri)
 		}
-	}
-	_logger = _logger.With(zap.Int("statusCode", statusCode))
-	var manifest JavascriptPackageManifestPartial
 
-	if err != nil {
-		_logger.Error("HTTP error", zap.Error(err))
-
-		manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)
-		store.Manifests.Put(name, version, &manifest)
-		return &manifest, err
 	}
 
-	switch statusCode {
-	case 200:
-		{
-			var body []byte
-			encoding := string(resp.Header.Peek(fasthttp.HeaderContentEncoding))
-			switch encoding {
-			case "deflate":
-			case "gzip":
-				{
-					body, err = resp.BodyGunzip()
-				}
-			case "br":
-				{
-					body, err = resp.BodyUnbrotli()
-				}
-			default:
-				{
-					body = resp.Body()
-				}
-			}
-
-			if err != nil {
-				manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)
-				store.Manifests.Put(name, version, &manifest)
-				return &manifest, err
-			}
-
-			manifest, err = NewJavascriptPackageManifestPartial(&body, config.BLACKLIST_PACKAGES, false)
-
-			if err != nil {
-				manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)
-				store.Manifests.Put(name, version, &manifest)
-				return &manifest, err
-			}
-
-			store.Manifests.Put(name, version, &manifest)
-
-			_logger.Debug("Success")
-		}
-	case 404:
-		{
-			err = errors.New(fmt.Sprintf("package \"%s\" : \"%s\" not found", name, version))
-			_logger.Debug("Fail")
-			manifest := NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusNotFound)
-			store.Manifests.Put(name, version, &manifest)
-			return &manifest, err
-		}
-
-	case 509:
-	case 505:
-	case 504:
-	case 503:
-	case 502:
-	case 501:
-	case 500:
-		{
-			err = errors.New("internal error while validating package")
-			_logger.Debug("Fail")
-			manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)
-			store.Manifests.Put(name, version, &manifest)
-			return &manifest, err
-		}
-
-	case 429:
-		{
-			err = errors.New("too many requests")
-			manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusRateLimit)
-			_logger.Debug("Fail")
-			store.Manifests.Put(name, version, &manifest)
-			return &manifest, err
-		}
-
-	default:
-		{
-			err = errors.New(fmt.Sprintf("error: status code %d", statusCode))
-			manifest = NewJavascriptPackageManifestWithError(name, version, PackageResolutionStatusInternal)
-			store.Manifests.Put(name, version, &manifest)
-			_logger.Debug("Fail")
-			return &manifest, err
-		}
-	}
-
-	return &manifest, err
+	return store.fetchFromNPM(name, version, parentName)
 }

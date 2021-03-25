@@ -19,7 +19,8 @@ type uint32 = number;
     https = 3,
     tgz = 4,
     disk = 5,
-    other = 6
+    other = 6,
+    github = 7
   }
   export const PackageProviderKeys = {
     1: "npm",
@@ -33,23 +34,71 @@ type uint32 = number;
     5: "disk",
     disk: "disk",
     6: "other",
-    other: "other"
+    other: "other",
+    7: "github",
+    github: "github"
+  }
+  export enum PackageVersionProtocol {
+    github_bare = 1,
+    github_dot_com = 2,
+    github_tarball = 3,
+    github_owner_repo = 4,
+    http = 5,
+    https = 6,
+    https_tarball = 7,
+    http_tarball = 8,
+    git = 9,
+    git_ssh = 10,
+    pathlike = 11,
+    default = 12
+  }
+  export const PackageVersionProtocolKeys = {
+    1: "github_bare",
+    github_bare: "github_bare",
+    2: "github_dot_com",
+    github_dot_com: "github_dot_com",
+    3: "github_tarball",
+    github_tarball: "github_tarball",
+    4: "github_owner_repo",
+    github_owner_repo: "github_owner_repo",
+    5: "http",
+    http: "http",
+    6: "https",
+    https: "https",
+    7: "https_tarball",
+    https_tarball: "https_tarball",
+    8: "http_tarball",
+    http_tarball: "http_tarball",
+    9: "git",
+    git: "git",
+    10: "git_ssh",
+    git_ssh: "git_ssh",
+    11: "pathlike",
+    pathlike: "pathlike",
+    12: "default",
+    default: "default"
   }
   export enum VersionRange {
-    none = 1,
+    exact = 1,
     tilda = 2,
     caret = 3,
-    complex = 4
+    range = 4,
+    unknown = 5,
+    wildcard = 6
   }
   export const VersionRangeKeys = {
-    1: "none",
-    none: "none",
+    1: "exact",
+    exact: "exact",
     2: "tilda",
     tilda: "tilda",
     3: "caret",
     caret: "caret",
-    4: "complex",
-    complex: "complex"
+    4: "range",
+    range: "range",
+    5: "unknown",
+    unknown: "unknown",
+    6: "wildcard",
+    wildcard: "wildcard"
   }
   export enum PackageResolutionStatus {
     success = 1,
@@ -136,12 +185,10 @@ type uint32 = number;
   }
 
   export interface Version {
-    major: int;
-    minor: int;
-    patch: int;
-    range: VersionRange;
-    pre: string;
-    build: string;
+    protocol: PackageVersionProtocol;
+    versionRange: VersionRange;
+    originalTag: alphanumeric;
+    tag: alphanumeric;
   }
 
   export interface RawDependencyList {

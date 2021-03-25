@@ -373,9 +373,7 @@ to quickly create a Cobra application.`,
 				os.WriteFile(config.Global.LockfilePath+".json", formatJSON(json), os.ModePerm)
 			}
 		} else if config.Global.Install {
-			// for _, dep := range manifest.Dependencies {
-
-			// }
+			// list := make([]lockfile.PackageManifestCache)
 		}
 
 		if config.Global.Install {

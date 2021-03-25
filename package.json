@@ -35,7 +35,7 @@
     "npm-package-arg": "^8.1.1",
     "p-limit": "^3.1.0",
     "path-browserify": "^1.0.1",
-    "peechy": "0.2.4",
+    "peechy": "0.2.5",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-portal": "^4.2.1",

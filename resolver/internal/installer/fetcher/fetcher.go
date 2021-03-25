@@ -31,7 +31,7 @@ type PackageArchiveJob struct {
 
 func NewPackageArchive(manifest *lockfile.JavascriptPackageManifestPartial, target string) PackageArchive {
 	return PackageArchive{
-		Source:     manifest.Provider.ToArchiveURL(manifest.Name, manifest.Version.Build),
+		Source:     manifest.Provider.ToArchiveURL(manifest.Name, manifest.Version.Tag),
 		Target:     target,
 		SourceType: manifest.Provider,
 	}
