@@ -16,14 +16,9 @@ limitations under the License.
 package cmd
 
 import (
-	"log"
-	"strconv"
-
 	"github.com/jarred-sumner/devserverless/config"
-	"github.com/jarred-sumner/devserverless/resolver/cache"
 	"github.com/jarred-sumner/devserverless/resolver/internal/server"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 // serveCmd represents the serve command
@@ -38,6 +33,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		port, _ := cmd.Flags().GetUint("port")
+		config.Global.LoadCacheType()
 
 		err := config.Global.NormalizeRegistrar()
 
@@ -51,36 +47,8 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		switch config.Global.From {
-		case config.CacheTypeLocal:
-			{
-				store, err := cache.NewLocalPackageManifestStore(config.Global.Cache)
-				store.Store.RegistrarAPI = config.Global.Registrar
-
-				if err != nil {
-					store.Store.Logger.Fatal("Error starting", zap.Error(err))
-					return
-				}
-				store.Store.Logger.Info("Started server "+"http://localhost:"+strconv.FormatUint(uint64(config.Global.Port), 10), zap.Uint("port", port))
-				if err := server.StartServer(port, store.Store, nil); err != nil {
-					store.Store.Logger.Fatal("Error in ListenAndServe: %s", zap.Error(err))
-				}
-			}
-		case config.CacheTypeNone:
-			{
-				store := cache.NewMemoryPackageManifestStore()
-				store.RegistrarAPI = config.Global.Registrar
-				store.Logger.Info("Started server "+"http://localhost:"+strconv.FormatUint(uint64(config.Global.Port), 10), zap.Uint("port", port))
-				if err := server.StartServer(port, &store, nil); err != nil {
-					store.Logger.Fatal("Error in ListenAndServe: %s", zap.Error(err))
-				}
-			}
-		default:
-			{
-				log.Fatalf("Unsupported cache " + config.Global.Cache)
-			}
-		}
-
+		s := server.Server{}
+		s.Launch(port)
 	},
 }
 

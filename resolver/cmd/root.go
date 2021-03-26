@@ -67,7 +67,7 @@ func init() {
 	viper.BindPFlag("registrar", rootCmd.Flags().Lookup("registrar"))
 	viper.BindEnv("cache", "DUCK_CACHE")
 	viper.BindEnv("registrar", "NPM_PACKAGE_REGISTRAR")
-	// rootCmd.TraverseChildren = true
+	rootCmd.TraverseChildren = true
 
 }
 

@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"os"
 	"reflect"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -26,8 +27,8 @@ type LocalPackageManifestStore struct {
 	Aliases      *LocalPackageAliasCache
 	Ranges       *LocalPackageRangeCache
 
-	SaveWorker *workerpool.WorkerPool
-	Database   *bolt.DB
+	Database  *bolt.DB
+	saveMutex sync.Mutex
 }
 
 type LocalPackageManifestCache struct {
@@ -275,7 +276,7 @@ func NewLocalPackageManifestStore(databaseFile string) (*LocalPackageManifestSto
 		Manifests:    &Manifests,
 		Aliases:      &Aliases,
 		Ranges:       &Ranges,
-		SaveWorker:   workerpool.New(1),
+		saveMutex:    sync.Mutex{},
 	}
 
 	if Store.JSDelivrClient.TLSConfig == nil {
@@ -291,6 +292,19 @@ func NewLocalPackageManifestStore(databaseFile string) (*LocalPackageManifestSto
 	Store.JSDelivrClient.TLSConfig.InsecureSkipVerify = true
 
 	return &store, err
+}
+
+func (i *LocalPackageManifestStore) AutoFlush() {
+	// i.saveMutex.Lock()
+	// defer i.saveMutex.Unlock()
+
+	errChan := make(chan error)
+	go i.Flush(errChan, false)
+	err := <-errChan
+	if err != nil {
+		i.Store.Logger.Error("Flush failed!", zap.Error(err))
+	}
+	close(errChan)
 }
 
 func (i *LocalPackageManifestStore) Flush(channel chan error, closeDB bool) {

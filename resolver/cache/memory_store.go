@@ -104,7 +104,7 @@ func NewMemoryPackageRangeCache() *MemoryPackageTagStore {
 // But, 50% here is approximately 125µs (0.125ms)
 // So that's probably the right move.
 // It needs to be an LRU because what if you have like 10,000 packages in memory will it fit?  Who the duck knows
-func NewMemoryPackageManifestStore() lockfile.PackageManifestStore {
+func NewMemoryPackageManifestStore() *lockfile.PackageManifestStore {
 	logger, _ := zap.NewDevelopment()
 
 	store := lockfile.PackageManifestStore{
@@ -131,7 +131,7 @@ func NewMemoryPackageManifestStore() lockfile.PackageManifestStore {
 	store.NPMClient.TLSConfig.InsecureSkipVerify = true
 	store.JSDelivrClient.TLSConfig.InsecureSkipVerify = true
 
-	return store
+	return &store
 }
 
 func (m *MemoryPackageAliasCache) Get(name string) (string, bool) {
