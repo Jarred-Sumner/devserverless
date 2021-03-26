@@ -4,14 +4,13 @@ go 1.16
 
 require (
 	github.com/Jarred-Sumner/semver/v4 v4.0.1-0.20210319050327-4cfbc82124dd
-	github.com/alecthomas/participle/v2 v2.0.0-alpha4 // indirect
 	github.com/atreugo/cors v1.0.4
 	github.com/cespare/xxhash v1.1.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/ristretto v0.0.4-0.20210122082011-bb5d392ed82d
 	github.com/fatih/color v1.10.0
+	github.com/franela/goblin v0.0.0-20210113153425-413781f5e6c8
 	github.com/gammazero/workerpool v1.1.1
-	github.com/goccmack/gocc v0.0.0-20210322175033-34358ebe5808 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/jarred-sumner/peechy v0.0.0-1a0a427
 	github.com/json-iterator/go v1.1.10
@@ -25,7 +24,6 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.4 // indirect
 	github.com/pkg/profile v1.5.0
 	github.com/savsgio/atreugo/v11 v11.6.3
-	github.com/savsgio/gotils v0.0.0-20210225112730-595c7e5a8a7a
 	github.com/shamaton/msgpack v1.2.1
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/cobra v1.1.3

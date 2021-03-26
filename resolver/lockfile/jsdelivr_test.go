@@ -43,19 +43,20 @@ var rollup = "^1.20.0||^2.0.0"
 
 func TestSatisfying(t *testing.T) {
 	var store lockfile.PackageManifestStore
-	store = cache.NewMemoryPackageManifes\tStore()
+	store = cache.NewMemoryPackageManifestStore()
 
 	assertRange(t, rollup, lockfile.VersionRangeRange)
-	assertResolves(t, &store, "rollup", rollup, "2.42.2")
+	assertResolves(t, &store, "rollup", rollup, "2.42.4")
 
 	res := TRICKY_VERSIONS[0]
 	name := res[0]
 
+	assertRange(t, "1", lockfile.VersionRangeWildcard)
+	assertResolves(t, &store, "abbrev", "1", "1.1.1")
+
 	assertRange(t, "^1.1.2", lockfile.VersionRangeRange)
 	assertResolves(t, &store, name, res[1], "1.1.2")
 
-	assertRange(t, "1", lockfile.VersionRangeWildcard)
-	assertResolves(t, &store, "abbrev", "1", "1.1.1")
 }
 
 func assertRange(t *testing.T, version string, r lockfile.VersionRange) {

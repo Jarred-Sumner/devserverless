@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	semver "github.com/Jarred-Sumner/semver/v4"
 	"github.com/gammazero/workerpool"
 	"github.com/jarred-sumner/devserverless/config"
+	"github.com/jarred-sumner/devserverless/resolver/node_semver"
 	runner "github.com/jarred-sumner/devserverless/resolver/runner"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/valyala/fasthttp"
@@ -105,17 +105,14 @@ func (store *PackageManifestStore) FetchPackageMetadata(name string, parentName 
 				return &result, err
 			}
 
-			list := make(semver.Versions, 0, len(rawResult.Versions))
+			list := make(node_semver.Versions, 0, len(rawResult.Versions))
 
 			for _, versionStr := range rawResult.Versions {
-				parsed, e := semver.Parse(versionStr)
-				if e != nil {
-					_logger.Error("Error checking version", zap.Error(e), zap.String("version", versionStr))
-				}
-				list = append(list, parsed)
+				parsed := node_semver.Tokenize(versionStr)
+				list = append(list, *parsed.Version)
 			}
 
-			sort.Sort(list)
+			// sort.Sort(list)
 
 			result = JSDelivrPackageData{
 				Tags:     rawResult.Tags,
@@ -269,13 +266,13 @@ func (pack *PackageFlatPack) FetchDependencies(res *JavascriptPackageManifestPar
 		}
 	}
 
-	if includeDevDependencies && res.DevDependencyNames != nil && len(res.DevDependencyNames) > 0 {
-		for i := range res.DevDependencyNames {
-			pack.enqueue(res.DevDependencyNames[i], res.DevDependencyVersions[i], res.Name)
-		}
-	}
+	// if includeDevDependencies && res.DevDependencyNames != nil && len(res.DevDependencyNames) > 0 {
+	// 	for i := range res.DevDependencyNames {
+	// 		pack.enqueue(res.DevDependencyNames[i], res.DevDependencyVersions[i], res.Name)
+	// 	}
+	// }
 
-	if res.PeerDependencyNames != nil && len(res.PeerDependencyVersions) > 0 {
+	if includeDevDependencies && res.PeerDependencyNames != nil && len(res.PeerDependencyVersions) > 0 {
 		for i := range res.PeerDependencyNames {
 			pack.enqueue(res.PeerDependencyNames[i], res.PeerDependencyVersions[i], res.Name)
 		}

@@ -1,12 +1,12 @@
 package lockfile
 
 import (
-	semver "github.com/Jarred-Sumner/semver/v4"
+	"github.com/jarred-sumner/devserverless/resolver/node_semver"
 )
 
 type JSDelivrPackageData struct {
-	Tags     map[string]string `json:"tags"`
-	Versions semver.Versions   `json:"versions"`
+	Tags     map[string]string    `json:"tags"`
+	Versions node_semver.Versions `json:"versions"`
 }
 
 type RawJSDelivrPackageData struct {
@@ -23,43 +23,33 @@ func (p *JSDelivrPackageData) Satisfying(version string) (string, error) {
 		version = p.Tags[version]
 	}
 
-	vr := NewVersionRange(version, len(version))
-	var semverRange semver.Range
-	var parsedVersion semver.Version
-	var err error
+	tokenized := node_semver.Tokenize(version)
 
-	switch vr {
-	case VersionRangeExact:
-		{
-			parsedVersion, err = semver.Parse(version)
+	if len(p.Versions) > 0 {
 
-			for i := p.Versions.Len() - 1; i > -1; i-- {
-				if parsedVersion.Equals(p.Versions[i]) {
-					return p.Versions[i].String(), err
+		switch tokenized.Value {
+		case node_semver.TokenizeResultValueVersion:
+			{
+				version := tokenized.Version
+
+				for i := range p.Versions {
+					if p.Versions[i].EQ(*version) {
+						return p.Versions[i].String(), nil
+					}
 				}
 			}
-
-		}
-	default:
-		{
-			semverRange, err = semver.ParseRange(version)
-		}
-	}
-
-	if err != nil {
-		return version, err
-	}
-
-	if vr > VersionRangeExact && len(p.Versions) > 0 {
-		// Iterate through backwards because we want to find the latest satisfying version
-		for i := len(p.Versions) - 1; i > -1; i-- {
-			if semverRange(p.Versions[i]) {
-				return p.Versions[i].String(), err
+		case node_semver.TokenizeResultValueRange:
+			{
+				for i := range p.Versions {
+					if tokenized.Range(p.Versions[i]) {
+						return p.Versions[i].String(), nil
+					}
+				}
 			}
 		}
 	}
 
-	return version, err
+	return "latest", nil
 }
 
 var JSDelivrMetadataFormatterString = "https://data.jsdelivr.com/v1/package/npm/%s"

@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	semver "github.com/Jarred-Sumner/semver/v4"
 	"github.com/cespare/xxhash"
 	"github.com/jarred-sumner/devserverless/config"
 	"github.com/jarred-sumner/peechy/buffer"
@@ -345,8 +344,6 @@ func (p *JavascriptPackageManifestPartial) processDependencyList(list map[string
 	keys := make([]string, 0, len(list))
 	values := make([]string, 0, len(list))
 
-	var normalizedVersion string
-
 	if config.BLACKLIST_PACKAGES {
 		var normalizedName string
 
@@ -358,20 +355,7 @@ func (p *JavascriptPackageManifestPartial) processDependencyList(list map[string
 			}
 
 			keys = append(keys, normalizedName)
-			normalizedVersion = NormalizePackageVersionString(value)
-			length := len(normalizedVersion)
-
-			if NewVersionRange(normalizedVersion, length) == VersionRangeExact {
-				tag := semver.CreateVersionStringFromWildcard(normalizedVersion)
-
-				if tag != "" {
-					values = append(values, tag)
-				} else {
-					values = append(values, normalizedVersion)
-				}
-			} else {
-				values = append(values, normalizedVersion)
-			}
+			values = append(values, value)
 
 		}
 	} else {
@@ -379,21 +363,7 @@ func (p *JavascriptPackageManifestPartial) processDependencyList(list map[string
 			normalizedName := NormalizePackageNameString(key)
 
 			keys = append(keys, normalizedName)
-			normalizedVersion = NormalizePackageVersionString(value)
-			length := len(normalizedVersion)
-
-			if NewVersionRange(normalizedVersion, length) == VersionRangeExact {
-				tag := semver.CreateVersionStringFromWildcard(normalizedVersion)
-
-				if tag != "" {
-					values = append(values, tag)
-				} else {
-					values = append(values, normalizedVersion)
-				}
-			} else {
-				values = append(values, normalizedVersion)
-			}
-
+			values = append(values, value)
 		}
 	}
 

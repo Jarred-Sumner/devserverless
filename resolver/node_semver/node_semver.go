@@ -2,10 +2,14 @@
 package node_semver
 
 import (
+	"math"
+	"math/bits"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 type WildcardType byte
@@ -53,36 +57,79 @@ type Version struct {
 	Build []string
 }
 
+// MarshalJSON implements the encoding/json.Marshaler interface.
+func (v Version) MarshalJSON() ([]byte, error) {
+	return jsoniter.Marshal(v.String())
+}
+
+// UnmarshalJSON implements the encoding/json.Unmarshaler interface.
+func (v Version) UnmarshalJSON(data []byte) (err error) {
+	var versionString string
+
+	if err = jsoniter.Unmarshal(data, &versionString); err != nil {
+		return
+	}
+
+	v = *Tokenize(versionString).Version
+
+	return
+}
+
 // Version to string
 func (v Version) String() string {
-	b := make([]byte, 0, 5)
-	b = strconv.AppendUint(b, v.Major, 10)
-	b = append(b, '.')
-	b = strconv.AppendUint(b, v.Minor, 10)
-	b = append(b, '.')
-	b = strconv.AppendUint(b, v.Patch, 10)
+	b := strings.Builder{}
+
+	majorLen := bits.Len64(v.Major) / 8
+	if majorLen == 0 {
+		majorLen = 1
+	}
+	minorLen := bits.Len64(v.Major) / 8
+	if minorLen == 0 {
+		minorLen = 1
+	}
+	patchLen := bits.Len64(v.Major) / 8
+	if patchLen == 0 {
+		patchLen = 1
+	}
+
+	preLen := len(v.Pre)
+	for _, pre := range v.Pre {
+		preLen += len(pre)
+	}
+
+	buildLen := len(v.Build)
+	for _, pre := range v.Build {
+		preLen += len(pre)
+	}
+
+	b.Grow(majorLen + minorLen + patchLen + preLen + buildLen + 2)
+	b.WriteString(strconv.FormatUint(v.Major, 10))
+	b.WriteRune('.')
+	b.WriteString(strconv.FormatUint(v.Minor, 10))
+	b.WriteRune('.')
+	b.WriteString(strconv.FormatUint(v.Patch, 10))
 
 	if len(v.Pre) > 0 {
-		b = append(b, '-')
-		b = append(b, v.Pre[0]...)
+		b.WriteRune('-')
+		b.WriteString(v.Pre[0])
 
 		for _, pre := range v.Pre[1:] {
-			b = append(b, '.')
-			b = append(b, pre...)
+			b.WriteRune('.')
+			b.WriteString(pre)
 		}
 	}
 
 	if len(v.Build) > 0 {
-		b = append(b, '+')
-		b = append(b, v.Build[0]...)
+		b.WriteRune('+')
+		b.WriteString(v.Build[0])
 
-		for _, build := range v.Build[1:] {
-			b = append(b, '.')
-			b = append(b, build...)
+		for _, pre := range v.Build[1:] {
+			b.WriteRune('.')
+			b.WriteString(pre)
 		}
 	}
 
-	return string(b)
+	return b.String()
 }
 
 func (v *Version) Reset() {
@@ -193,59 +240,215 @@ func (v Version) LE(o Version) bool {
 	return (v.Compare(o) <= 0)
 }
 
+func (v Version) SortableCompare(o Version) int {
+	hasPre := len(v.Pre) > 0
+	otherHasPre := len(o.Pre) > 0
+
+	if hasPre != otherHasPre && otherHasPre {
+		return 1
+	}
+
+	if v.Major > o.Major {
+		return 1
+	} else if v.Major < o.Major {
+		return -1
+	} else if v.Minor > o.Minor {
+		return 1
+	} else if v.Minor < o.Minor {
+		return -1
+	} else if v.Patch > o.Patch {
+		return 1
+	} else if v.Patch < o.Patch {
+		return -1
+	}
+
+	hasBuild := len(v.Build) > 0
+	otherHasBuild := len(o.Build) > 0
+	if hasBuild && !otherHasBuild {
+		return 1
+	} else if !hasBuild && otherHasBuild {
+		return -1
+	}
+
+	// i := 0
+	// buildComparator := 0
+	// preComparator := 0
+
+	// if hasPre && otherHasPre {
+	// 	for ; i < len(v.Pre) && i < len(o.Pre); i++ {
+	// 		if comp := strings.Compare(v.Pre[i], o.Pre[i]); comp == 0 {
+	// 			continue
+	// 		} else if comp == 1 {
+	// 			preComparator = 1
+	// 			break
+	// 		} else {
+	// 			preComparator = -1
+	// 			break
+	// 		}
+	// 	}
+	// } else if hasPre {
+	// 	preComparator = -1
+	// } else if otherHasPre {
+	// 	preComparator = 1
+	// }
+
+	// if hasBuild && !hasPre && otherHasPre {
+	// 	return 1
+	// }
+
+	// if hasBuild && hasPre && !otherHasPre && otherHasBuild {
+	// 	return -1
+	// }
+
+	// if hasPre && hasBuild && otherHasPre && !otherHasBuild {
+	// 	return 1
+	// } else if hasPre && hasBuild && otherHasPre && otherHasBuild {
+	// 	return 0
+	// } else if hasPre && !hasBuild && !otherHasPre && !otherHasBuild {
+	// 	return -1
+	// } else if !hasPre && hasBuild && !otherHasPre && !otherHasBuild {
+	// 	return 1
+	// } else if !hasPre && hasBuild && otherHasPre && !otherHasBuild {
+	// 	return 1
+	// }
+
+	// if hasPre && otherHasPre {
+	// 	return 0
+	// }	// if hasBuild && otherHasBuild {
+	// 	for ; i < len(v.Build) && i < len(o.Build); i++ {
+	// 		if comp := strings.Compare(v.Build[i], o.Build[i]); comp == 0 {
+	// 			continue
+	// 		} else if comp == 1 {
+	// 			buildComparator = 1
+	// 			break
+	// 		} else {
+	// 			buildComparator = -1
+	// 			break
+	// 		}
+	// 	}
+	// } else if hasBuild {
+	// 	buildComparator = 1
+	// } else if otherHasBuild {
+	// 	buildComparator = -1
+	// }
+
+	// if preComparator != 0 {
+	// 	return preComparator
+	// }
+
+	return 0
+	// return buildComparator
+}
+
 // Compare compares Versions v to o:
 // -1 == v is less than o
 // 0 == v is equal to o
 // 1 == v is greater than o
 func (v Version) Compare(o Version) int {
-	if v.Major != o.Major {
-		if v.Major > o.Major {
-			return 1
-		}
-		return -1
-	}
-	if v.Minor != o.Minor {
-		if v.Minor > o.Minor {
-			return 1
-		}
-		return -1
-	}
-	if v.Patch != o.Patch {
-		if v.Patch > o.Patch {
-			return 1
-		}
-		return -1
-	}
 
-	// Quick comparison if a version has no prerelease versions
-	if len(v.Pre) == 0 && len(o.Pre) == 0 {
-		return 0
-	} else if len(v.Pre) == 0 && len(o.Pre) > 0 {
-		return 1
-	} else if len(v.Pre) > 0 && len(o.Pre) == 0 {
-		return -1
-	}
+	hasPre := len(v.Pre) > 0
+	otherHasPre := len(o.Pre) > 0
 
-	i := 0
-	for ; i < len(v.Pre) && i < len(o.Pre); i++ {
-		if comp := strings.Compare(v.Pre[i], o.Pre[i]); comp == 0 {
-			continue
-		} else if comp == 1 {
-			return 1
-		} else {
-			return -1
-		}
-	}
-
-	// If all pr versions are the equal but one has further prversion, this one greater
-	if i == len(v.Pre) && i == len(o.Pre) {
-		return 0
-	} else if i == len(v.Pre) && i < len(o.Pre) {
-		return -1
-	} else {
+	if hasPre != otherHasPre && otherHasPre {
 		return 1
 	}
 
+	// if hasPre && !otherHasPre {
+	// 	return -1
+	// } else if otherHasPre && !hasPre {
+	// 	return 1
+	// }
+
+	if v.Major > o.Major {
+		return 1
+	} else if v.Major < o.Major {
+		return -1
+	} else if v.Minor > o.Minor {
+		return 1
+	} else if v.Minor < o.Minor {
+		return -1
+	} else if v.Patch > o.Patch {
+		return 1
+	} else if v.Patch < o.Patch {
+		return -1
+	}
+
+	hasBuild := len(v.Build) > 0
+	otherHasBuild := len(o.Build) > 0
+	if hasBuild && !otherHasBuild {
+		return 1
+	} else if !hasBuild && otherHasBuild {
+		return -1
+	}
+
+	// i := 0
+	// buildComparator := 0
+	// preComparator := 0
+
+	// if hasPre && otherHasPre {
+	// 	for ; i < len(v.Pre) && i < len(o.Pre); i++ {
+	// 		if comp := strings.Compare(v.Pre[i], o.Pre[i]); comp == 0 {
+	// 			continue
+	// 		} else if comp == 1 {
+	// 			preComparator = 1
+	// 			break
+	// 		} else {
+	// 			preComparator = -1
+	// 			break
+	// 		}
+	// 	}
+	// } else if hasPre {
+	// 	preComparator = -1
+	// } else if otherHasPre {
+	// 	preComparator = 1
+	// }
+
+	// if hasBuild && !hasPre && otherHasPre {
+	// 	return 1
+	// }
+
+	// if hasBuild && hasPre && !otherHasPre && otherHasBuild {
+	// 	return -1
+	// }
+
+	// if hasPre && hasBuild && otherHasPre && !otherHasBuild {
+	// 	return 1
+	// } else if hasPre && hasBuild && otherHasPre && otherHasBuild {
+	// 	return 0
+	// } else if hasPre && !hasBuild && !otherHasPre && !otherHasBuild {
+	// 	return -1
+	// } else if !hasPre && hasBuild && !otherHasPre && !otherHasBuild {
+	// 	return 1
+	// } else if !hasPre && hasBuild && otherHasPre && !otherHasBuild {
+	// 	return 1
+	// }
+
+	// if hasPre && otherHasPre {
+	// 	return 0
+	// }	// if hasBuild && otherHasBuild {
+	// 	for ; i < len(v.Build) && i < len(o.Build); i++ {
+	// 		if comp := strings.Compare(v.Build[i], o.Build[i]); comp == 0 {
+	// 			continue
+	// 		} else if comp == 1 {
+	// 			buildComparator = 1
+	// 			break
+	// 		} else {
+	// 			buildComparator = -1
+	// 			break
+	// 		}
+	// 	}
+	// } else if hasBuild {
+	// 	buildComparator = 1
+	// } else if otherHasBuild {
+	// 	buildComparator = -1
+	// }
+
+	// if preComparator != 0 {
+	// 	return preComparator
+	// }
+
+	// return buildComparator
+	return 0
 }
 
 // rangeFunc creates a Range from the given versionRange.
@@ -333,6 +536,22 @@ type TokenizeResult struct {
 	Value   TokenizeResultValue
 }
 
+func (t *TokenizeResult) TestString(input string) bool {
+	alt := Tokenize(input)
+	return t.Test(&alt)
+}
+
+func (t *TokenizeResult) Test(o *TokenizeResult) bool {
+	if o.Value == TokenizeResultValueVersion && t.Value == TokenizeResultValueVersion {
+		return o.Version.EQ(*t.Version)
+	} else if o.Value == TokenizeResultValueVersion && t.Value == TokenizeResultValueRange {
+		return t.Range(*o.Version)
+	} else if o.Value == TokenizeResultValueRange && t.Value == TokenizeResultValueVersion {
+		return o.Range(*t.Version)
+	} else {
+		return false
+	}
+}
 func (t *TokenizeResult) IsVersion() bool {
 	return t.Value == TokenizeResultValueVersion
 }
@@ -356,21 +575,21 @@ func buildRangeFunc(comp comparator, major uint64, minor uint64, patch uint64) R
 }
 
 var preparsedTable = map[string]TokenizeResult{
-	"*":  TokenizeResult{Range: buildRangeFunc(compGE, 0, 0, 0), Value: TokenizeResultValueRange},
-	"X":  TokenizeResult{Range: buildRangeFunc(compGE, 0, 0, 0), Value: TokenizeResultValueRange},
-	"x":  TokenizeResult{Range: buildRangeFunc(compGE, 0, 0, 0), Value: TokenizeResultValueRange},
-	"0":  TokenizeResult{Range: buildRangeFunc(compGE, 0, 0, 0).AND(buildRangeFunc(compLT, 1, 0, 0)), Value: TokenizeResultValueRange},
-	"1":  TokenizeResult{Range: buildRangeFunc(compGE, 1, 0, 0).AND(buildRangeFunc(compLT, 2, 0, 0)), Value: TokenizeResultValueRange},
-	"2":  TokenizeResult{Range: buildRangeFunc(compGE, 2, 0, 0).AND(buildRangeFunc(compLT, 3, 0, 0)), Value: TokenizeResultValueRange},
-	"3":  TokenizeResult{Range: buildRangeFunc(compGE, 3, 0, 0).AND(buildRangeFunc(compLT, 4, 0, 0)), Value: TokenizeResultValueRange},
-	"4":  TokenizeResult{Range: buildRangeFunc(compGE, 4, 0, 0).AND(buildRangeFunc(compLT, 5, 0, 0)), Value: TokenizeResultValueRange},
-	"5":  TokenizeResult{Range: buildRangeFunc(compGE, 5, 0, 0).AND(buildRangeFunc(compLT, 6, 0, 0)), Value: TokenizeResultValueRange},
-	"6":  TokenizeResult{Range: buildRangeFunc(compGE, 6, 0, 0).AND(buildRangeFunc(compLT, 7, 0, 0)), Value: TokenizeResultValueRange},
-	"7":  TokenizeResult{Range: buildRangeFunc(compGE, 7, 0, 0).AND(buildRangeFunc(compLT, 8, 0, 0)), Value: TokenizeResultValueRange},
-	"8":  TokenizeResult{Range: buildRangeFunc(compGE, 8, 0, 0).AND(buildRangeFunc(compLT, 9, 0, 0)), Value: TokenizeResultValueRange},
-	"9":  TokenizeResult{Range: buildRangeFunc(compGE, 9, 0, 0).AND(buildRangeFunc(compLT, 10, 0, 0)), Value: TokenizeResultValueRange},
-	"10": TokenizeResult{Range: buildRangeFunc(compGE, 10, 0, 0).AND(buildRangeFunc(compLT, 11, 0, 0)), Value: TokenizeResultValueRange},
-	"":   TokenizeResult{Range: buildRangeFunc(compGE, 0, 0, 0), Value: TokenizeResultValueRange},
+	"*":  {Range: buildRangeFunc(compGE, 0, 0, 0), Value: TokenizeResultValueRange},
+	"X":  {Range: buildRangeFunc(compGE, 0, 0, 0), Value: TokenizeResultValueRange},
+	"x":  {Range: buildRangeFunc(compGE, 0, 0, 0), Value: TokenizeResultValueRange},
+	"0":  {Range: buildRangeFunc(compGE, 0, 0, 0).AND(buildRangeFunc(compLT, 1, 0, 0)), Value: TokenizeResultValueRange},
+	"1":  {Range: buildRangeFunc(compGE, 1, 0, 0).AND(buildRangeFunc(compLT, 2, 0, 0)), Value: TokenizeResultValueRange},
+	"2":  {Range: buildRangeFunc(compGE, 2, 0, 0).AND(buildRangeFunc(compLT, 3, 0, 0)), Value: TokenizeResultValueRange},
+	"3":  {Range: buildRangeFunc(compGE, 3, 0, 0).AND(buildRangeFunc(compLT, 4, 0, 0)), Value: TokenizeResultValueRange},
+	"4":  {Range: buildRangeFunc(compGE, 4, 0, 0).AND(buildRangeFunc(compLT, 5, 0, 0)), Value: TokenizeResultValueRange},
+	"5":  {Range: buildRangeFunc(compGE, 5, 0, 0).AND(buildRangeFunc(compLT, 6, 0, 0)), Value: TokenizeResultValueRange},
+	"6":  {Range: buildRangeFunc(compGE, 6, 0, 0).AND(buildRangeFunc(compLT, 7, 0, 0)), Value: TokenizeResultValueRange},
+	"7":  {Range: buildRangeFunc(compGE, 7, 0, 0).AND(buildRangeFunc(compLT, 8, 0, 0)), Value: TokenizeResultValueRange},
+	"8":  {Range: buildRangeFunc(compGE, 8, 0, 0).AND(buildRangeFunc(compLT, 9, 0, 0)), Value: TokenizeResultValueRange},
+	"9":  {Range: buildRangeFunc(compGE, 9, 0, 0).AND(buildRangeFunc(compLT, 10, 0, 0)), Value: TokenizeResultValueRange},
+	"10": {Range: buildRangeFunc(compGE, 10, 0, 0).AND(buildRangeFunc(compLT, 11, 0, 0)), Value: TokenizeResultValueRange},
+	"":   {Range: buildRangeFunc(compGE, 0, 0, 0), Value: TokenizeResultValueRange},
 }
 
 func (result *TokenizeResult) AppendVersion(v *Version) {
@@ -483,16 +702,30 @@ func (t *semverToken) ToRange(v *Version) Range {
 	case SevmerTokenTypeCaret:
 		{
 			if v.Major == 0 {
-				return v.ToWildcardRange(MajorWildcard)
-			} else if v.Minor == 0 {
-				return v.ToWildcardRange(MinorWildcard)
-			} else {
+				return v.ToWildcardRange(PatchWildcard)
+			}
+
+			if t.Wildcard == MinorWildcard || (t.Wildcard == NoneWildcard && v.Minor == 0 && v.Patch == 0) {
 				r1 := v.ToRange(compGE)
 				v2 := &Version{}
+
 				v.CopyTo(v2)
-				v2.Minor++
-				v2.Patch = 0
-				return r1.AND(v2.ToRange(compLT))
+				v2.Minor = math.MaxUint64
+				v2.Patch = math.MaxUint64
+				return r1.AND(v2.ToRange(compLE))
+			}
+
+			if v.Minor == 0 && v.Patch == 0 {
+				return v.ToWildcardRange(PatchWildcard)
+			} else {
+
+				r1 := v.ToRange(compGE)
+				v2 := &Version{}
+
+				v.CopyTo(v2)
+				v2.Minor = math.MaxUint64
+				v2.Patch = math.MaxUint64
+				return r1.AND(v2.ToRange(compLE))
 			}
 
 		}
@@ -518,10 +751,32 @@ func (t *semverToken) ToRange(v *Version) Range {
 
 	case SevmerTokenTypeGT:
 		{
+			switch t.Wildcard {
+			case PatchWildcard:
+				{
+					v.Patch = math.MaxUint64
+				}
+			case MinorWildcard:
+				{
+					v.Minor = math.MaxUint64
+				}
+			}
 			return v.ToRange(compGT)
 		}
 	case SevmerTokenTypeLT:
 		{
+			switch t.Wildcard {
+			case PatchWildcard:
+				{
+					v.Patch = 0
+					v.Minor = 0
+				}
+			case MinorWildcard:
+				{
+					v.Minor = 0
+					v.Patch = 0
+				}
+			}
 			return v.ToRange(compLT)
 		}
 	}
@@ -551,8 +806,9 @@ func Tokenize(input string) TokenizeResult {
 	isOR := false
 	count := 0
 	wipToken := SevmerTokenTypeNone
-
+	skipRound := false
 	for i < length {
+		skipRound = false
 		switch input[i] {
 		case '>':
 			{
@@ -600,6 +856,11 @@ func Tokenize(input string) TokenizeResult {
 			{
 				wipToken = SevmerTokenTypeTilda
 				i++
+
+				if input[i] == '>' {
+					i++
+				}
+
 				for i < length && input[i] == ' ' {
 					i++
 				}
@@ -621,16 +882,16 @@ func Tokenize(input string) TokenizeResult {
 		case '|':
 			{
 				i++
-				for i < length && input[i] != '|' {
+				for i < length && input[i] == '|' {
 					i++
 				}
 
-				for i < length && input[i] != ' ' {
+				for i < length && input[i] == ' ' {
 					i++
 				}
 				isOR = true
 				wipToken = SevmerTokenTypeNone
-				continue
+				skipRound = true
 			}
 		case '-':
 			{
@@ -646,82 +907,85 @@ func Tokenize(input string) TokenizeResult {
 				for i < length && input[i] == ' ' {
 					i++
 				}
-				continue
+				skipRound = true
 			}
 		default:
 			{
 				i++
 				wipToken = SevmerTokenTypeNone
-				continue
+				skipRound = true
 			}
 		}
 
-		lastNonwhitespace = i
+		if !skipRound {
 
-		if count == 0 && wipToken == SevmerTokenTypeVersion {
-			v := &Version{}
-			version.Reset()
-			token.Token = wipToken
-			token.Wildcard, _, i = parseVersion(input[i:], version)
-			version.CopyTo(v)
-			if token.Wildcard == NoneWildcard {
-				result.AppendVersion(v)
-			} else {
+			lastNonwhitespace = i
+
+			if count == 0 && wipToken == SevmerTokenTypeVersion {
+				v := &Version{}
+				version.Reset()
+				token.Token = wipToken
+				token.Wildcard, _, i = parseVersion(input[i:], version)
+				version.CopyTo(v)
+				if token.Wildcard == NoneWildcard {
+					result.AppendVersion(v)
+				} else {
+					result.AppendRange(token.ToRange(v))
+				}
+				count++
+				token.Token = SevmerTokenTypeNone
+				token.Wildcard = NoneWildcard
+				version.Reset()
+			} else if count == 0 {
+				v := &Version{}
+				version.Reset()
+				token.Token = wipToken
+				token.Wildcard, _, i = parseVersion(input[i:], version)
+				version.CopyTo(v)
 				result.AppendRange(token.ToRange(v))
-			}
-			count++
-			token.Token = SevmerTokenTypeNone
-			token.Wildcard = NoneWildcard
-			version.Reset()
-		} else if count == 0 {
-			v := &Version{}
-			version.Reset()
-			token.Token = wipToken
-			token.Wildcard, _, i = parseVersion(input[i:], version)
-			version.CopyTo(v)
-			result.AppendRange(token.ToRange(v))
-			token.Token = wipToken
-			version.Reset()
-			count++
-		} else if isOR {
+				token.Token = wipToken
+				version.Reset()
+				count++
+			} else if isOR {
 
-			if token.Token != SevmerTokenTypeNone && count > 1 {
+				if token.Token != SevmerTokenTypeNone && count > 1 {
 
+					v := &Version{}
+					version.CopyTo(v)
+					or := token.ToRange(v)
+
+					version.Reset()
+					token.Token = wipToken
+					token.Wildcard, _, i = parseVersion(input[i:], version)
+					v2 := &Version{}
+					version.CopyTo(v2)
+
+					result.AppendORRange(or.OR(token.ToRange(v2)))
+				} else {
+					token.Token = wipToken
+					token.Wildcard, _, i = parseVersion(input[i:], version)
+					v2 := &Version{}
+					version.CopyTo(v2)
+					result.AppendORRange(token.ToRange(v2))
+				}
+				count++
+			} else {
+				count++
 				v := &Version{}
 				version.CopyTo(v)
 				or := token.ToRange(v)
-
 				version.Reset()
 				token.Token = wipToken
 				token.Wildcard, _, i = parseVersion(input[i:], version)
 				v2 := &Version{}
 				version.CopyTo(v2)
 
-				result.AppendORRange(or.OR(token.ToRange(v2)))
-			} else {
-				token.Token = wipToken
-				token.Wildcard, _, i = parseVersion(input[i:], version)
-				v2 := &Version{}
-				version.CopyTo(v2)
-				result.AppendORRange(token.ToRange(v2))
+				result.AppendRange(or.AND(token.ToRange(v2)))
 			}
-			count++
-		} else {
-			count++
-			v := &Version{}
-			version.CopyTo(v)
-			or := token.ToRange(v)
-			version.Reset()
-			token.Token = wipToken
-			token.Wildcard, _, i = parseVersion(input[i:], version)
-			v2 := &Version{}
-			version.CopyTo(v2)
 
-			result.AppendRange(or.AND(token.ToRange(v2)))
+			i += lastNonwhitespace + 1
+			isOR = false
 		}
-
-		i += lastNonwhitespace + 1
-		isOR = false
 	}
 
 	scratchVersionPool.Put(version)

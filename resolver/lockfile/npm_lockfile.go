@@ -30,8 +30,9 @@ func (p *NPMLockfile) FindParents(name string, dep *NPMDependency) []string {
 	deps := make([]string, 0, 4)
 
 	for key, value := range p.Dependencies {
-		if _, exists := value.Requires[name]; exists {
+		if v, exists := value.Requires[name]; exists {
 			deps = append(deps, value.String(key))
+			dep.Versions = append(dep.Versions, v)
 		}
 	}
 
@@ -43,6 +44,7 @@ type NPMDependency struct {
 	Resolved  string            `json:"resolved"`
 	Integrity string            `json:"integrity"`
 	Requires  map[string]string `json:"requires"`
+	Versions  []string          `json:"versions"`
 }
 
 func (p *NPMDependency) String(name string) string {
@@ -63,6 +65,8 @@ type DiffedPackage struct {
 	TargetName    string `json:"targetName"`
 	TargetVersion string `json:"targetVersion"`
 
+	ListedVersion string `json:"version"`
+
 	Parents []string `json:"parents"`
 }
 
@@ -75,7 +79,7 @@ func (d *DiffedPackage) String() string {
 	}
 
 	if d.TargetName != "" {
-		src = "-		" + d.TargetName + "@" + d.TargetVersion
+		tgt = "-		" + d.TargetName + "@" + d.TargetVersion
 	}
 
 	var res string
@@ -91,7 +95,12 @@ func (d *DiffedPackage) String() string {
 		parents = ""
 	}
 
-	return res + parents
+	res += parents
+	if len(d.ListedVersion) > 0 {
+		res += "			[v" + d.ListedVersion + "]"
+	}
+
+	return res
 
 }
 
@@ -134,6 +143,18 @@ func indexof(list []string, val string) int {
 	return -1
 }
 
+func indexWithVersion(manifest *JavascriptPackageManifest, name string, version string) int {
+	for i, _name := range manifest.Name {
+		if _name == name {
+			if manifest.Version[i] == version {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
 func (l *NPMLockfile) Diff(manifest *JavascriptPackageManifest) PackageDiff {
 	diff := PackageDiff{
 		Missing: make([]DiffedPackage, 0, 100),
@@ -156,6 +177,7 @@ func (l *NPMLockfile) Diff(manifest *JavascriptPackageManifest) PackageDiff {
 	}
 
 	for key, value := range l.Dependencies {
+		parents := l.FindParents(key, &value)
 
 		otherI := indexof(manifest.Name, key)
 		if otherI == -1 {
@@ -164,15 +186,25 @@ func (l *NPMLockfile) Diff(manifest *JavascriptPackageManifest) PackageDiff {
 				SourceVersion: value.Version,
 				TargetName:    "",
 				TargetVersion: "",
-				Parents:       l.FindParents(key, &value),
+				ListedVersion: strings.Join(value.Versions, ","),
+				Parents:       parents,
 			})
 		} else if manifest.Version[otherI] != value.Version {
-			diff.Changed = append(diff.Changed, DiffedPackage{
-				SourceName:    key,
-				SourceVersion: value.Version,
-				TargetName:    key,
-				TargetVersion: manifest.Version[otherI],
-			})
+			origOtherI := otherI
+			otherI = indexWithVersion(manifest, key, value.Version)
+
+			if otherI == -1 {
+				otherI = origOtherI
+				diff.Changed = append(diff.Changed, DiffedPackage{
+					SourceName:    key,
+					SourceVersion: value.Version,
+					TargetName:    key,
+					TargetVersion: manifest.Version[otherI],
+					Parents:       parents,
+					ListedVersion: strings.Join(value.Versions, ","),
+				})
+			}
+
 		}
 	}
 
